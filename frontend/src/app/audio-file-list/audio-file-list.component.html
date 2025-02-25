@@ -1,0 +1,101 @@
+<div class="audio-list-container">
+  <div class="search-bar">
+    <input
+      type="text"
+      placeholder="Search tracks..."
+      [(ngModel)]="searchQuery"
+      (input)="filterAudioFiles()"
+      class="search-input"
+    />
+  </div>
+
+  <div class="audio-list-header">
+    <div class="header-item album-art-header"></div>
+    <div class="header-item title-header" (click)="sortBy('title')">
+      Title
+      <span class="sort-indicator" *ngIf="currentSortColumn === 'title'">
+        <ng-container *ngIf="sortDirection === 'asc'">&#9650;</ng-container>
+        <ng-container *ngIf="sortDirection === 'desc'">&#9660;</ng-container>
+      </span>
+    </div>
+    <div class="header-item artist-header" (click)="sortBy('artist')">
+      Artist
+      <span class="sort-indicator" *ngIf="currentSortColumn === 'artist'">
+        <ng-container *ngIf="sortDirection === 'asc'">&#9650;</ng-container>
+        <ng-container *ngIf="sortDirection === 'desc'">&#9660;</ng-container>
+      </span>
+    </div>
+    <div class="header-item album-header" (click)="sortBy('album')">
+      Album
+      <span class="sort-indicator" *ngIf="currentSortColumn === 'album'">
+        <ng-container *ngIf="sortDirection === 'asc'">&#9650;</ng-container>
+        <ng-container *ngIf="sortDirection === 'desc'">&#9660;</ng-container>
+      </span>
+    </div>
+    <div class="header-item year-header" (click)="sortBy('year')">
+      Year
+      <span class="sort-indicator" *ngIf="currentSortColumn === 'year'">
+        <ng-container *ngIf="sortDirection === 'asc'">&#9650;</ng-container>
+        <ng-container *ngIf="sortDirection === 'desc'">&#9660;</ng-container>
+      </span>
+    </div>
+    <div class="header-item duration-header" (click)="sortBy('duration')">
+      Duration
+      <span class="sort-indicator" *ngIf="currentSortColumn === 'duration'">
+        <ng-container *ngIf="sortDirection === 'asc'">&#9650;</ng-container>
+        <ng-container *ngIf="sortDirection === 'desc'">&#9660;</ng-container>
+      </span>
+    </div>
+  </div>
+
+  <ul class="audio-list">
+    <li
+      *ngFor="let audioFile of displayedAudioFiles; let i = index"
+      (click)="onSelectAudioFile(audioFile)"
+      class="audio-list-item"
+    >
+      <div class="track-album-art-column">
+        <ng-container *ngIf="audioFile.images && audioFile.images.length > 0">
+          <img
+            class="album-art-thumbnail"
+            [src]="
+              'data:' +
+              audioFile.images[0].mime_type +
+              ';base64,' +
+              audioFile.images[0].data
+            "
+            alt="Album Art"
+          />
+        </ng-container>
+        <ng-container
+          *ngIf="!(audioFile.images && audioFile.images.length > 0)"
+        >
+          <div class="no-album-art"></div>
+        </ng-container>
+      </div>
+
+      <div class="track-title-column">
+        {{ audioFile.title || audioFile.filename }}
+      </div>
+
+      <div class="track-artist-column">
+        {{ audioFile.artist || "Unknown Artist" }}
+      </div>
+
+      <div class="track-album-column">
+        <a
+          [routerLink]="['/album', audioFile.album]"
+          title="View Album Details"
+          class="album-link-style"
+        >
+          {{ audioFile.album || "Unknown Album" }}
+        </a>
+      </div>
+
+      <div class="track-year-column">{{ audioFile.year || "N/A" }}</div>
+      <div class="track-duration-column">
+        {{ formatDuration(audioFile.duration) }}
+      </div>
+    </li>
+  </ul>
+</div>

@@ -1,0 +1,65 @@
+<div class="album-page-container">
+  <div *ngIf="albumMetadata" class="album-header-section">
+    <div class="album-art">
+      <ng-container
+        *ngIf="albumMetadata.images && albumMetadata.images.length > 0"
+      >
+        <img
+          [src]="
+            'data:' +
+            albumMetadata.images[0].mime_type +
+            ';base64,' +
+            albumMetadata.images[0].data
+          "
+          alt="{{ albumName }} Album Art"
+          class="album-art-image"
+        />
+      </ng-container>
+      <ng-container
+        *ngIf="!(albumMetadata.images && albumMetadata.images.length > 0)"
+      >
+        <div class="no-album-art-large"></div>
+      </ng-container>
+    </div>
+    <div class="album-header-metadata">
+      <h2>{{ albumMetadata.album || albumName || "Unknown Album" }}</h2>
+      <p>{{ albumMetadata.artist || "Unknown Artist" }}</p>
+      <p class="album-year-genre">
+        <ng-container *ngIf="albumMetadata.year">
+          {{ albumMetadata.year }}
+        </ng-container>
+        <ng-container *ngIf="albumMetadata.year && albumMetadata.genre">
+          •
+        </ng-container>
+        <ng-container *ngIf="albumMetadata.genre">
+          {{ albumMetadata.genre }}
+        </ng-container>
+      </p>
+      <p class="album-runtime">
+        {{ trackCount }} songs,
+        {{ formatRuntimeMinutes(totalRuntimeSeconds) }} minutes
+      </p>
+    </div>
+  </div>
+
+  <div *ngIf="albumTracks.length > 0" class="album-tracklist-section">
+    <ul class="album-track-list">
+      <li
+        *ngFor="let track of albumTracks; let i = index"
+        class="album-track-list-item"
+        [class.odd-track]="isOdd(i)"
+      >
+        <div class="track-number-column">{{ track.track }}</div>
+        <div class="track-title-column">
+          {{ track.title || track.filename }}
+        </div>
+        <div class="track-duration-column">
+          {{ formatDuration(track.duration) }}
+        </div>
+        <div class="track-actions-column">
+          <button class="track-actions-button">...</button>
+        </div>
+      </li>
+    </ul>
+  </div>
+</div>

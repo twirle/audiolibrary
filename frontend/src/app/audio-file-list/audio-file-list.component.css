@@ -1,0 +1,199 @@
+.audio-list-container {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 5px;
+}
+
+h2 {
+  font-size: 1.5em;
+  margin: 15px;
+  color: #333;
+  text-align: left;
+}
+
+.audio-list-header {
+  display: flex;
+  background-color: #f0f0f0;
+  padding: 8px 12px;
+  border-bottom: 1px solid #ccc;
+  font-weight: bold;
+  color: #555;
+  box-sizing: border-box;
+}
+
+.header-item {
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: 0;
+  text-align: left;
+  padding-right: 10px;
+  box-sizing: border-box;
+}
+
+.album-art-header {
+  /* width: 60px; */
+  flex-basis: 5%;
+  text-align: center;
+}
+.title-header {
+  flex-basis: 35%;
+}
+.artist-header {
+  flex-basis: 25%;
+}
+.album-header {
+  flex-basis: 25%;
+}
+.year-header {
+  flex-basis: 5%;
+  text-align: center;
+}
+.duration-header {
+  flex-basis: 5%;
+  text-align: right;
+  padding-right: 0;
+  padding-left: 10px;
+}
+
+.audio-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.audio-list-item {
+  display: flex;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+  justify-content: flex-start;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.audio-list-item:last-child {
+  border-bottom: none;
+}
+
+.audio-list-item:hover {
+  background-color: #f0f0f0;
+}
+
+.track-album-art-column .track-title-column,
+.track-artist-column,
+.track-album-column,
+.track-year-column,
+.track-duration-column {
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: 0;
+  text-align: left;
+  padding-right: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+}
+
+.track-album-art-column {
+  /* width: 60px; */
+  flex-basis: 5%;
+  /* flex-grow: 0;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-right: 10px; */
+}
+
+.track-title-column {
+  flex-basis: 35%;
+  font-weight: bold;
+}
+
+.track-artist-column {
+  flex-basis: 25%;
+  color: #666;
+}
+
+.track-album-column {
+  flex-basis: 25%;
+  color: #777;
+}
+
+.track-year-column {
+  flex-basis: 5%;
+  text-align: center;
+  color: #777;
+}
+
+.track-duration-column {
+  flex-basis: 5%;
+  text-align: right;
+  color: #777;
+  padding-right: 0;
+  padding-left: 10px;
+}
+
+/* Sort Icon */
+.sort-indicator {
+  margin-left: 5px;
+  font-size: 0.8em;
+  vertical-align: middle;
+}
+
+/* Search */
+.search-bar {
+  margin: 15px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.search-input {
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 1em;
+  width: 300px;
+  max-width: 100%;
+}
+
+.audio-list-item {
+  display: flex;
+  align-items: center;
+}
+
+.album-art-thumbnail {
+  max-width: 45px;
+  max-height: 45px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.no-album-art {
+  width: 45px;
+  height: 45px;
+  background-color: #eee;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 0.7em;
+  color: #888;
+  border-radius: 4px;
+}
+
+.album-link-style {
+  text-decoration: none;
+  color: inherit;
+}
+
+.album-link-style:hover {
+  color: black;
+}
