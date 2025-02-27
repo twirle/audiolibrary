@@ -4,18 +4,19 @@ import os
 from tinytag import TinyTag, TinyTagException
 import base64
 import time
+import sys
 
 app = Flask(__name__)
 CORS(app)
 
 AUDIO_DIRECTORY = "/mnt/h/FLAC Music/Tatsuro Yamashita (山下達郎)"
 audio_folder = '/mnt/h/FLAC Music'
-app.config['UPLOAD_FOLDER'] = 'uploads'
 ALLOWED_EXTENSIONS = TinyTag.SUPPORTED_FILE_EXTENSIONS
 
 
 # cache variables
-audioMetadataCache = None
+audioMetadataCache = {}
+cachedFilePaths = set()
 cacheTimestamp = 0
 cacheExpiryTimeSeconds = 60 * 5
 lastFileChange = 0
@@ -80,36 +81,55 @@ def extractMetadata(filepath):
 
 @app.route('/api/audio-metadata')
 def getAudioMetadata():
-    global audioMetadataCache, cacheTimestamp, lastFileChange
+    global audioMetadataCache, cacheTimestamp, lastFileChange, cachedFilePaths
     currentTime = time.time()
     currentDirectoryChange = os.path.getmtime(AUDIO_DIRECTORY)
 
-    # check cache expiry
+    # check cache expiry from cache timestamp and directory
     if audioMetadataCache and \
         (currentTime - cacheTimestamp) < cacheExpiryTimeSeconds and \
             currentDirectoryChange == lastFileChange:
-        return jsonify(audioMetadataCache)
+        print(f"Retrieving metadata from cache")
+        return jsonify(list(audioMetadataCache.values()))
 
+    currentFilePaths = set()
     audioMetadataList = []
 
     # extract metadata
     for root, dirs, files in os.walk(AUDIO_DIRECTORY):
         for file in files:
-            if allowedFile(file):
-                filepath = os.path.join(root, file)
-                metadata = extractMetadata(filepath)
-                if 'error' not in metadata:
-                    audioMetadataList.append(metadata)
+            filepath = os.path.join(root, file)
+
+            if allowedFile(filepath):
+                currentFilePaths.add(filepath)
+
+                # check if filepath in cached filepaths
+                if filepath not in cachedFilePaths:
+                    print(f"New file found: {filepath}; extracting metadata")
+                    metadata = extractMetadata(filepath)
+
+                    if 'error' not in metadata:
+                        # add to cache
+                        audioMetadataCache[filepath] = metadata
+                        audioMetadataList.append(metadata)
+
+    # clearing missing files
+    removedFilePaths = cachedFilePaths - currentFilePaths
+    for filepath in removedFilePaths:
+        print(f"File removed from cache: {filepath}")
+        if filepath in audioMetadataCache:
+            del audioMetadataCache[filepath]
 
     # update cache with current list
-    audioMetadataCache = audioMetadataList
     cacheTimestamp = currentTime
     lastFileChange = currentDirectoryChange
+    cachedFilePaths = currentFilePaths
     print(f"Total tracks processed: {len(audioMetadataList)}")
     print(f"Last directory change", currentDirectoryChange)
     print(f"Last file change", lastFileChange)
+    print(f"Cache size", sys.getsizeof(audioMetadataCache))
 
-    return jsonify(audioMetadataList)
+    return jsonify(list(audioMetadataCache.values()))
 
 
 if __name__ == '__main__':
