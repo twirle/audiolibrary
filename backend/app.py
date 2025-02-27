@@ -1,8 +1,9 @@
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify
 from flask_cors import CORS
 import os
 from tinytag import TinyTag, TinyTagException
 import base64
+import time
 
 app = Flask(__name__)
 CORS(app)
@@ -13,11 +14,18 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 ALLOWED_EXTENSIONS = TinyTag.SUPPORTED_FILE_EXTENSIONS
 
 
-def allowed_file(filepath):
+# cache variables
+audioMetadataCache = None
+cacheTimestamp = 0
+cacheExpiryTimeSeconds = 60 * 5
+lastFileChange = 0
+
+
+def allowedFile(filepath):
     return TinyTag.is_supported(filepath)
 
 
-def extract_metadata(filepath):
+def extractMetadata(filepath):
     filename = filepath.split('/')[-1]
     print(f"Processing file: {filename}")
     try:
@@ -41,15 +49,15 @@ def extract_metadata(filepath):
 
         image = tag.images.any
 
-        if image:  # Check if an image was found
-            metadata['images'] = [{  # Create a list with a single image dictionary
+        if image:
+            metadata['images'] = [{
                 'data': base64.b64encode(image.data).decode('utf-8'),
                 'mime_type': image.mime_type
             }]
         else:
-            metadata['images'] = []  # If no image, keep images as empty list
+            metadata['images'] = []
 
-        # Log missing metadata fields (as before)
+        # Log missing metadata fields
         if not metadata.get('title'):
             print(f"Warning: Missing 'title' metadata for {filename}")
         if not metadata.get('artist'):
@@ -69,30 +77,39 @@ def extract_metadata(filepath):
             f"ERROR: Unexpected error: {e}, Filename: {filename}, Filepath: {filepath}")
         return {'error': f"An unexpected error occurred: {e}", 'filename': filename, 'filepath': filepath}
 
-# --- API Endpoints ---
-
 
 @app.route('/api/audio-metadata')
-def get_audio_metadata():
-    audio_metadata_list = []
-    print("Starting metadata extraction process...")  # LOG: Start of API call
+def getAudioMetadata():
+    global audioMetadataCache, cacheTimestamp, lastFileChange
+    currentTime = time.time()
+    currentDirectoryChange = os.path.getmtime(AUDIO_DIRECTORY)
+
+    # check cache expiry
+    if audioMetadataCache and \
+        (currentTime - cacheTimestamp) < cacheExpiryTimeSeconds and \
+            currentDirectoryChange == lastFileChange:
+        return jsonify(audioMetadataCache)
+
+    audioMetadataList = []
+
+    # extract metadata
     for root, dirs, files in os.walk(AUDIO_DIRECTORY):
         for file in files:
-            if allowed_file(file):
+            if allowedFile(file):
                 filepath = os.path.join(root, file)
-                metadata = extract_metadata(filepath)
+                metadata = extractMetadata(filepath)
                 if 'error' not in metadata:
-                    audio_metadata_list.append(metadata)
-    # LOG: End of API call and track count
-    print(
-        f"Finished metadata extraction. Total tracks processed: {len(audio_metadata_list)}")
-    return jsonify(audio_metadata_list)
+                    audioMetadataList.append(metadata)
 
+    # update cache with current list
+    audioMetadataCache = audioMetadataList
+    cacheTimestamp = currentTime
+    lastFileChange = currentDirectoryChange
+    print(f"Total tracks processed: {len(audioMetadataList)}")
+    print(f"Last directory change", currentDirectoryChange)
+    print(f"Last file change", lastFileChange)
 
-# ---  Serve Static Files (Optional) ---
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    return jsonify(audioMetadataList)
 
 
 if __name__ == '__main__':
