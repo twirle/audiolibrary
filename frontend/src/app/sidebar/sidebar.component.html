@@ -1,0 +1,28 @@
+<nav
+  class="fixed left-0 top-0 h-full w-48 bg-white text-gray-900 border border-gray-200 transition-all hover:w-48 group"
+>
+  <div class="p-2">
+    <h2 class="text-xl text-center font-bold truncate">audiolibrary</h2>
+  </div>
+
+  <ul class="space-y-2 px-2">
+    <li
+      *ngFor="let item of navItems"
+      class="group lfex flex-col items-center text-center"
+      [routerLink]="item.route"
+      routerLinkActive="rounded-lg"
+      [routerLinkActiveOptions]="item.options || { exact: false }"
+      #rla="routerLinkActive"
+      [class.bg-gray-200]="rla.isActive"
+    >
+      <a
+        class="flex items-center gap-3 rounded-lg px-4 py-3 hover:bg-gray-100 cursor-pointer"
+      >
+        <span class="material-icons block text-2xl align-middle">
+          {{ item.icon }}
+        </span>
+        <span class="text-xs text-gray-900 font-medium">{{ item.label }}</span>
+      </a>
+    </li>
+  </ul>
+</nav>

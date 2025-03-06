@@ -1,4 +1,3 @@
-// src/app/home/home.component.ts
 import { Component, DestroyRef, OnInit } from '@angular/core';
 import { TrackService } from '../services/track.service';
 import { Track } from '../models/track.model';

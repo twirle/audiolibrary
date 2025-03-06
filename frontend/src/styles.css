@@ -1,1 +1,5 @@
 @import "tailwindcss";
+
+nav {
+  transition: width 0.2s ease-in-out;
+}
