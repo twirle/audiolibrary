@@ -1,8 +1,12 @@
-import { Routes } from '@angular/router';
-import { AudioFileListComponent } from './audio-file-list/audio-file-list.component';
-import { AlbumPageComponent } from './album-page/album-page.component';
+import { Route } from '@angular/router';
+import { HomeComponent } from './home/home.component';
+import { AlbumComponent } from './album/album.component';
 
-export const routes: Routes = [
-  { path: '', component: AudioFileListComponent, pathMatch: 'full' },
-  { path: 'album/:albumName', component: AlbumPageComponent },
+export const appRoutes: Route[] = [
+  { path: '', component: HomeComponent, title: 'audiolibrary' },
+  {
+    path: 'album/:albumTitle',
+    component: AlbumComponent,
+    title: 'Album Details',
+  },
 ];

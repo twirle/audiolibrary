@@ -1,0 +1,66 @@
+<!-- src/app/album/album.component.html -->
+<div class="container mx-auto max-w-4xl px-4 py-6">
+  <a routerLink="/" class="mb-4 inline-block text-gray-500 hover:text-gray-800">
+    &larr; Back to Library
+  </a>
+
+  <!-- album header -->
+  <div *ngIf="albumDetails" class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <div class="flex items-start gap-6">
+      <div class="w-32 h-32 flex-shrink-0">
+        <img
+          *ngIf="albumDetails.coverArt"
+          [src]="'data:image/jpeg;base64,' + albumDetails.coverArt"
+          alt="Album cover"
+          class="w-full h-full object-cover rounded-lg"
+        />
+        <div
+          *ngIf="!albumDetails.coverArt"
+          class="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center"
+        >
+          <span class="text-gray-400 text-sm"></span>
+        </div>
+      </div>
+
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">
+          {{ albumDetails.title }}
+        </h1>
+        <p class="text-lg text-gray-600 mb-1">{{ albumDetails.artist }}</p>
+        <div class="flex gap-4 text-sm text-gray-500">
+          <span>{{ albumDetails.year }}</span>
+          <span>&middot;</span>
+          <span>{{ albumDetails.genre || "No Genre" }}</span>
+          <span>&middot;</span>
+          <span>{{ formatDuration(albumDetails.totalDuration) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- track list -->
+    <div class="mt-6">
+      <div class="-mx-4">
+        <div class="divide-y divide-gray-200">
+          <div
+            *ngFor="let track of albumTracks; let i = index"
+            class="w-full px-4 hover:bg-gray-100 w-full"
+            [class.bg-gray-50]="i % 2 !== 0"
+          >
+            <!-- inner container for content -->
+            <div class="py-3 flex items-center gap-4">
+              <span class="text-gray-400 w-8">{{ i + 1 }}</span>
+              <div class="flex-1">
+                <p class="font-medium text-gray-900">
+                  {{ track.title || "Untitled" }}
+                </p>
+              </div>
+              <span class="text-gray-500">
+                {{ formatDuration(track.duration) }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -39,3 +39,4 @@ Flask:
 - **Sliding Metadata Panel:** Seamlessly pop up metadata from the right and hides after. (No clicking of 'Properties' and waiting 5s to load (cough itunes))
 - **Playlists:** Drag and drop selected tracks in to playlist boxes
 - **Visuals:** Implement Material Design library
+- **Database:** Currently using cache to hold data for now, will require directory scan on each startup

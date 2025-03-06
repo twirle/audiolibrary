@@ -10,7 +10,6 @@ app = Flask(__name__)
 CORS(app)
 
 AUDIO_DIRECTORY = "/mnt/h/FLAC Music/Tatsuro Yamashita (山下達郎)"
-audio_folder = '/mnt/h/FLAC Music'
 ALLOWED_EXTENSIONS = TinyTag.SUPPORTED_FILE_EXTENSIONS
 
 
