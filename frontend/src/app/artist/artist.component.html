@@ -53,6 +53,7 @@
         <div
           *ngFor="let album of selectedArtist.albums"
           [routerLink]="['/album', album.title]"
+          [state]="{ returnToArtist: selectedArtist.name }"
           class="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
         >
           <div

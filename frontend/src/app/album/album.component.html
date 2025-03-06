@@ -1,11 +1,14 @@
-<!-- src/app/album/album.component.html -->
-<div class="container mx-auto max-w-4xl px-4 py-6">
-  <a routerLink="/" class="mb-4 inline-block text-gray-500 hover:text-gray-800">
-    &larr; Back to Library
-  </a>
-
+<div class="container mx-auto max-w-full">
   <!-- album header -->
-  <div *ngIf="albumDetails" class="bg-white rounded-lg shadow-md p-6 mb-6">
+  <div *ngIf="albumDetails" class="bg-white rounded-lg p-4 mb-6">
+    <button
+      *ngIf="returnToArtist"
+      (click)="backToArtist()"
+      class="flex items-center text-blue-600 hover:text-blue-800"
+    >
+      <span class="material-icons mr-1">arrow_back</span>
+      Back to {{ returnToArtist }}
+    </button>
     <div class="flex items-start gap-6">
       <div class="w-32 h-32 flex-shrink-0">
         <img

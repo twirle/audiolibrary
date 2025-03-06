@@ -1,10 +1,11 @@
 import { Component, DestroyRef, OnInit } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { TrackService } from '../services/track.service';
 import { Track } from '../models/track.model';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationService } from '../services/navigation.service';
 
 @Component({
   selector: 'app-album',
@@ -14,6 +15,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   styleUrls: ['./album.component.css'],
 })
 export class AlbumComponent implements OnInit {
+  private returnState: any;
   albumTracks: Track[] = [];
   albumDetails?: {
     title: string;
@@ -23,12 +25,17 @@ export class AlbumComponent implements OnInit {
     totalDuration: number;
     coverArt?: string;
   };
+  returnToArtist?: string;
 
   constructor(
     private route: ActivatedRoute,
     private trackService: TrackService,
-    private destroyRef: DestroyRef
-  ) {}
+    private destroyRef: DestroyRef,
+    private router: Router
+  ) {
+    const navigation = this.router.getCurrentNavigation();
+    this.returnToArtist = navigation?.extras.state?.['returnToArtist'];
+  }
 
   ngOnInit(): void {
     this.route.paramMap
@@ -67,5 +74,30 @@ export class AlbumComponent implements OnInit {
     const minutes = Math.floor(duration / 60);
     const seconds = Math.floor(duration % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
+
+  // backtoArtist(): void {
+  //   if (this.returnState.returnToArtist) {
+  //     this.router.navigate(['/artists'], {
+  //       state: {
+  //         artist: this.returnState.returnToArtist,
+  //         searchQuery: this.returnState.searchQuery,
+  //         scrollPosition: this.returnState.scrollPosition,
+  //       },
+  //     });
+  //   } else {
+  //     this.navigation.backToPrevious();
+  //   }
+  // }
+
+  backToArtist(): void {
+    if (this.returnToArtist) {
+      this.router.navigate(['/artists'], {
+        state: {
+          artist: this['returnToArtist'],
+          scrollPosition: history.state.scrollPosition || 0,
+        },
+      });
+    }
   }
 }
