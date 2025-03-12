@@ -6,22 +6,23 @@ Planning to port to Electron to allow for direct access to local audio files wit
 
 ### Current Features
 
-What you would expect from a media library manager:
+Typical media library manager things:
 
-- **Album Pages:** Clicking on an album name takes you to a dedicated album page.
-- **Album Information:** View album art, album title, artist, year, genre, and total album runtime.
-- **Track Listing and Metadata Display:** See a clear, column-based list of tracks for the selected album, including track number, title, duration, and actions.
-- **Search Bar:** Search for tracks, albums, or artists within library.
+- **full listing of tracks in folder(s):** view all your tracks
+- **artist search:** searchbar for artists;
+- **artist + album page:** filter albums by artists
+  - **album information:** view album art, album title, artist, year, genre, and total album runtime
 
 ### Stack
 
-- **Frontend:** Angular
-- **Backend:** Flask
-- **Metadata Extraction:** [TinyTags](https://github.com/tinytag/tinytag)
+- **frontend:** angular + tailwind
+- **backend:** flask
+- **database:** sqlalchemy
+- **metadata extract:** [mutagen](https://mutagen.readthedocs.io/en/latest/)
 
 ### Run
 
-Until it gets ported over to Electron:
+Separate Flask App + Angular frontend until I port it over to Electron:
 
 Angular:
 `brew install angular-cli`
@@ -34,9 +35,7 @@ Flask:
 
 ### Work in Progress
 
-- **Artist Pages:** Clicking on an album name takes you to a dedicated album page.
-- **Side Navigation Panel:** Side navigation panel to organise navigation.
-- **Sliding Metadata Panel:** Seamlessly pop up metadata from the right and hides after. (No clicking of 'Properties' and waiting 5s to load (cough itunes))
-- **Playlists:** Drag and drop selected tracks in to playlist boxes
-- **Visuals:** Implement Material Design library
-- **Database:** Currently using cache to hold data for now, will require directory scan on each startup
+- **sliding metadata panel:** seamlessly pop in metadata from the right and hides after
+- **playlists:** Drag and drop selected tracks in to playlist boxes
+- **overall searchbar:** somewhere on top left or top
+  - **spotlight search:** powertoys/macbook spotlight search, alt+space or alt+k or something
