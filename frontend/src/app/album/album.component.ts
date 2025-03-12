@@ -1,31 +1,21 @@
+// album.component.ts
 import { Component, DestroyRef, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TrackService } from '../services/track.service';
-import { Track } from '../models/track.model';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { NavigationService } from '../services/navigation.service';
 
 @Component({
   selector: 'app-album',
   standalone: true,
   imports: [CommonModule, RouterModule],
   templateUrl: './album.component.html',
-  styleUrls: ['./album.component.css'],
 })
 export class AlbumComponent implements OnInit {
-  private returnState: any;
-  albumTracks: Track[] = [];
-  albumDetails?: {
-    title: string;
-    artist: string;
-    year: string;
-    genre: string;
-    totalDuration: number;
-    coverArt?: string;
-  };
+  album: any;
   returnToArtist?: string;
+  scrollPosition: number = 0;
 
   constructor(
     private route: ActivatedRoute,
@@ -34,37 +24,28 @@ export class AlbumComponent implements OnInit {
     private router: Router
   ) {
     const navigation = this.router.getCurrentNavigation();
+    // console.log('Navigation state received:', navigation?.extras?.state);
+    // console.log('Scroll position:', navigation?.extras?.state?.['scrollPosition']);
+
     this.returnToArtist = navigation?.extras.state?.['returnToArtist'];
+    this.scrollPosition = navigation?.extras.state?.['scrollPosition'] || 0;
   }
 
   ngOnInit(): void {
     this.route.paramMap
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((params) => {
-        const albumTitle = params.get('albumTitle');
-        if (albumTitle) {
-          this.loadAlbumData(albumTitle);
+        const albumId = params.get('albumId');
+        if (albumId) {
+          this.loadAlbum(+albumId);
         }
       });
   }
 
-  private loadAlbumData(albumTitle: string): void {
-    this.trackService.getAlbumTracks(albumTitle).subscribe({
-      next: (tracks) => {
-        this.albumTracks = tracks;
-        if (tracks.length > 0) {
-          this.albumDetails = {
-            title: tracks[0].album,
-            artist: tracks[0].artist,
-            year: tracks[0].year,
-            genre: tracks[0].genre,
-            totalDuration: tracks.reduce(
-              (sum, track) => sum + track.duration,
-              0
-            ),
-            coverArt: tracks[0].images[0]?.data,
-          };
-        }
+  loadAlbum(albumId: number): void {
+    this.trackService.getAlbumById(albumId).subscribe({
+      next: (album) => {
+        this.album = album;
       },
       error: (err) => console.error('Error loading album:', err),
     });
@@ -76,26 +57,21 @@ export class AlbumComponent implements OnInit {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }
 
-  // backtoArtist(): void {
-  //   if (this.returnState.returnToArtist) {
-  //     this.router.navigate(['/artists'], {
-  //       state: {
-  //         artist: this.returnState.returnToArtist,
-  //         searchQuery: this.returnState.searchQuery,
-  //         scrollPosition: this.returnState.scrollPosition,
-  //       },
-  //     });
-  //   } else {
-  //     this.navigation.backToPrevious();
-  //   }
-  // }
+  getTotalDuration(): number {
+    if (!this.album?.tracks) return 0;
+    return this.album.tracks.reduce(
+      (sum: any, t: { duration: any }) => sum + t.duration,
+      0
+    );
+  }
 
   backToArtist(): void {
     if (this.returnToArtist) {
       this.router.navigate(['/artists'], {
         state: {
-          artist: this['returnToArtist'],
-          scrollPosition: history.state.scrollPosition || 0,
+          artist: this.returnToArtist,
+          artistId: history.state.artistId,
+          scrollPosition: this.scrollPosition,
         },
       });
     }

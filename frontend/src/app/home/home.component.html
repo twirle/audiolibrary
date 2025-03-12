@@ -1,40 +1,6 @@
 <div class="container mx-auto max-w-full px-2 py-2">
   <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
     <table class="min-w-full bg-white text-sm">
-      <thead class="bg-gray-50">
-        <tr>
-          <th
-            class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 whitespace-nowrap"
-          >
-            Album Art
-          </th>
-          <th
-            class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200"
-          >
-            Title
-          </th>
-          <th
-            class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200"
-          >
-            Artist
-          </th>
-          <th
-            class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200"
-          >
-            Album
-          </th>
-          <th
-            class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200"
-          >
-            Year
-          </th>
-          <th
-            class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200"
-          >
-            Duration
-          </th>
-        </tr>
-      </thead>
       <tbody class="divide-y divide-gray-200">
         <tr
           *ngFor="let track of tracks; let i = index"
@@ -44,21 +10,16 @@
           <td class="px-5 py-2 align-middle">
             <div class="w-12 h-12 flex items-center justify-center">
               <img
-                *ngIf="track.images?.length"
-                [src]="
-                  'data:' +
-                  track.images[0].mime_type +
-                  ';base64,' +
-                  track.images[0].data
-                "
+                *ngIf="track.albumArt"
+                [src]="'data:' + track.albumArt.mimeType + ';base64,' + track.albumArt.data"
                 alt="Album Art"
                 class="w-full h-full object-cover rounded-sm"
               />
               <div
-                *ngIf="!track.images?.length"
+                *ngIf="!track.albumArt"
                 class="w-full h-full bg-gray-100 rounded-sm flex items-center justify-center"
               >
-                <span class="text-gray-400 text-xxs"></span>
+                <span class="material-icons">album</span>
               </div>
             </div>
           </td>
@@ -66,17 +27,14 @@
             {{ track.title }}
           </td>
           <td class="px-3 py-2 text-gray-900">{{ track.artist }}</td>
-
-          <!-- Track Album link -->
           <td class="px-3 py-2 text-gray-900">
             <a
-              [routerLink]="['/album', track.album]"
+              [routerLink]="['/album', track.id]"
               class="text-gray-900 hover:text-gray-500"
             >
               {{ track.album }}
             </a>
           </td>
-
           <td class="px-3 py-2 text-gray-900">{{ track.year }}</td>
           <td class="px-3 py-2 text-gray-900">
             {{ formatDuration(track.duration) }}
@@ -84,5 +42,24 @@
         </tr>
       </tbody>
     </table>
+  </div>
+  
+  <!-- Pagination controls -->
+  <div class="flex justify-between items-center mt-4 px-4">
+    <button 
+      (click)="loadTracks(currentPage-1)" 
+      [disabled]="currentPage === 1"
+      class="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+    >
+      Previous
+    </button>
+    <span>Page {{ currentPage }} of {{ totalPages }}</span>
+    <button 
+      (click)="loadTracks(currentPage+1)" 
+      [disabled]="currentPage === totalPages"
+      class="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+    >
+      Next
+    </button>
   </div>
 </div>

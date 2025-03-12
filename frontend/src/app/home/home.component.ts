@@ -11,10 +11,11 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   standalone: true,
   imports: [CommonModule, HttpClientModule, RouterModule],
   templateUrl: './home.component.html',
-  styleUrls: ['./home.component.css'],
 })
 export class HomeComponent implements OnInit {
   tracks: Track[] = [];
+  currentPage = 1;
+  totalPages = 1;
 
   constructor(
     private trackService: TrackService,
@@ -22,11 +23,19 @@ export class HomeComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.loadTracks();
+  }
+
+  loadTracks(page: number = 1): void {
     this.trackService
-      .getTracks()
+      .getTracks(page)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (data) => (this.tracks = data),
+        next: (response) => {
+          this.tracks = response.tracks;
+          this.currentPage = response.pagination.page;
+          this.totalPages = response.pagination.pages;
+        },
         error: (error) => console.error('Error:', error),
       });
   }

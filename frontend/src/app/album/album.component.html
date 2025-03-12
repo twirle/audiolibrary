@@ -1,41 +1,43 @@
 <div class="container mx-auto max-w-full">
-  <!-- album header -->
-  <div *ngIf="albumDetails" class="bg-white rounded-lg p-4 mb-6">
+  <div *ngIf="album" class="bg-white rounded-lg p-4">
     <button
       *ngIf="returnToArtist"
       (click)="backToArtist()"
-      class="flex items-center text-blue-600 hover:text-blue-800"
+      class="flex items-center text-stone-500 hover:text-stone-400 mb-3"
     >
-      <span class="material-icons mr-1">arrow_back</span>
-      Back to {{ returnToArtist }}
+      <span class="material-icons">arrow_back</span>
+      <span class="ml-1">{{ returnToArtist }}</span>
     </button>
+
     <div class="flex items-start gap-6">
       <div class="w-32 h-32 flex-shrink-0">
         <img
-          *ngIf="albumDetails.coverArt"
-          [src]="'data:image/jpeg;base64,' + albumDetails.coverArt"
+          *ngIf="album.albumArt"
+          [src]="
+            'data:' + album.albumArt.mimeType + ';base64,' + album.albumArt.data
+          "
           alt="Album cover"
           class="w-full h-full object-cover rounded-lg"
         />
         <div
-          *ngIf="!albumDetails.coverArt"
+          *ngIf="!album.albumArt"
           class="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center"
         >
-          <span class="text-gray-400 text-sm"></span>
+          <span class="material-icons">album</span>
         </div>
       </div>
 
       <div>
         <h1 class="text-2xl font-bold text-gray-800 mb-1">
-          {{ albumDetails.title }}
+          {{ album.name }}
         </h1>
-        <p class="text-lg text-gray-600 mb-1">{{ albumDetails.artist }}</p>
+        <p class="text-lg text-gray-600 mb-1">{{ album.artist }}</p>
         <div class="flex gap-4 text-sm text-gray-500">
-          <span>{{ albumDetails.year }}</span>
+          <span>{{ album.year }}</span>
           <span>&middot;</span>
-          <span>{{ albumDetails.genre || "No Genre" }}</span>
+          <span>{{ album.tracks.length }} tracks</span>
           <span>&middot;</span>
-          <span>{{ formatDuration(albumDetails.totalDuration) }}</span>
+          <span>{{ formatDuration(getTotalDuration()) }}</span>
         </div>
       </div>
     </div>
@@ -45,13 +47,14 @@
       <div class="-mx-4">
         <div class="divide-y divide-gray-200">
           <div
-            *ngFor="let track of albumTracks; let i = index"
+            *ngFor="let track of album.tracks; let i = index"
             class="w-full px-4 hover:bg-gray-100 w-full"
-            [class.bg-gray-50]="i % 2 !== 0"
+            [class.bg-gray-50]="i % 2 === 0"
           >
-            <!-- inner container for content -->
             <div class="py-3 flex items-center gap-4">
-              <span class="text-gray-400 w-8">{{ i + 1 }}</span>
+              <span class="text-gray-400 w-8">{{
+                track.trackNumber || i + 1
+              }}</span>
               <div class="flex-1">
                 <p class="font-medium text-gray-900">
                   {{ track.title || "Untitled" }}

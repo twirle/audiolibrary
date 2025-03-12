@@ -1,13 +1,19 @@
 export interface Artist {
+  id: number;
   name: string;
   albums: AlbumSummary[];
-  totalTracks: number;
-  genres: string[];
+  albumCount: number;
+  trackCount: number;
+  genres?: string[];
 }
 
 export interface AlbumSummary {
-  title: string;
-  year?: string;
-  coverArt?: string;
+  id: number;
+  name: string;
+  year?: number;
   trackCount: number;
+  albumArt?: {
+    data: string;
+    mimeType: string;
+  };
 }

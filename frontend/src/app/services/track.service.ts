@@ -1,21 +1,24 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
-import { Track } from '../models/track.model';
+import { Observable } from 'rxjs';
+import { Track, PaginatedResponse } from '../models/track.model';
 
 @Injectable({ providedIn: 'root' })
 export class TrackService {
-  private apiUrl = 'http://localhost:5000/api/audio-metadata';
+  private apiBaseUrl = 'http://localhost:5000/api';
 
   constructor(private http: HttpClient) {}
 
-  getTracks(): Observable<Track[]> {
-    return this.http.get<Track[]>(this.apiUrl);
+  getTracks(
+    page: number = 1,
+    perPage: number = 100
+  ): Observable<PaginatedResponse<Track>> {
+    return this.http.get<PaginatedResponse<Track>>(
+      `${this.apiBaseUrl}/tracks?page=${page}&per_page=${perPage}`
+    );
   }
 
-  getAlbumTracks(albumTitle: string): Observable<Track[]> {
-    return this.getTracks().pipe(
-      map((tracks) => tracks.filter((t) => t.album === albumTitle))
-    );
+  getAlbumById(albumId: number): Observable<any> {
+    return this.http.get(`${this.apiBaseUrl}/albums/${albumId}`);
   }
 }

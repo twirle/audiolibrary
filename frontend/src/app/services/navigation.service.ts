@@ -23,14 +23,20 @@ export class NavigationService {
     }
   }
 
-  storeArtistState(artistName: string, state: any): void {
+  storeArtistState(artistId: number, artistName: string, state: any): void {
     localStorage.setItem(
       'artistState',
       JSON.stringify({
-        artist: artistName,
+        artistId,
+        artistName,
         ...state,
       })
     );
+  }
+
+  getStoredArtistState(): any {
+    const stateStr = localStorage.getItem('artistState');
+    return stateStr ? JSON.parse(stateStr) : null;
   }
 
   clearArtistState(): void {

@@ -1,5 +1,6 @@
+<!-- artist.component.html -->
 <div class="flex h-screen">
-  <!-- artist list -->
+  <!-- Artist List -->
   <div class="w-64 border-r border-gray-200 bg-white flex-shrink-0">
     <div class="p-4 sticky top-0 bg-white z-10">
       <input
@@ -12,24 +13,35 @@
 
     <div class="divide-y divide-gray-200">
       <div
-        *ngFor="let artist of filteredArtists(); let i = index"
-        (click)="selectedArtist = artist"
+        *ngFor="
+          let artist of filteredArtists();
+          let i = index;
+          trackBy: trackByArtistId
+        "
+        (click)="selectArtistById(artist.id)"
         class="p-4 hover:bg-gray-100 cursor-pointer transition-colors"
-        [class.bg-gray-50]="i % 2 === 0"
+        [class.bg-gray-50]="i % 2 !== 0"
       >
         <h3 class="font-medium text-gray-900 text-sm">{{ artist.name }}</h3>
         <p class="text-xs text-gray-500 mt-1">
-          {{ artist.albums.length }} albums • {{ artist.totalTracks }} tracks
+          {{ artist.albumCount }} albums • {{ artist.trackCount }} tracks
         </p>
       </div>
     </div>
   </div>
 
-  <!-- artist details section-->
+  <!-- Artist Details Section -->
   <div class="flex-1 overflow-y-auto p-8 bg-gray-50">
     <div *ngIf="selectedArtist; else emptyState" class="max-w-6xl mx-auto">
-      <!-- artist header -->
+      <!-- Artist Header -->
       <div class="mb-8">
+        <button
+          (click)="clearSelection()"
+          class="mb-4 flex items-center text-blue-600 hover:text-blue-800"
+        >
+          <span class="material-icons mr-1">arrow_back</span>
+          Back to All Artists
+        </button>
         <h1 class="text-2xl font-bold text-gray-900 mb-2">
           {{ selectedArtist.name }}
         </h1>
@@ -40,41 +52,43 @@
           >
             {{ genre }}
           </span>
-          <span *ngIf="!selectedArtist.genres.length" class="text-xs">
+          <span *ngIf="!selectedArtist.genres?.length" class="text-xs">
             Various genres
           </span>
         </div>
       </div>
 
-      <!-- albums grid -->
+      <!-- Albums Grid -->
       <div
         class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4"
       >
         <div
-          *ngFor="let album of selectedArtist.albums"
-          [routerLink]="['/album', album.title]"
-          [state]="{ returnToArtist: selectedArtist.name }"
+          *ngFor="let album of selectedArtist.albums; trackBy: trackByAlbumId"
+          (click)="navigateToAlbum(album)"
           class="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
         >
           <div
             class="aspect-square mb-3 bg-gray-100 rounded-lg overflow-hidden"
           >
             <img
-              *ngIf="album.coverArt"
-              [src]="'data:image/jpeg;base64,' + album.coverArt"
+              *ngIf="album.albumArt?.data"
+              [src]="
+                'data:' +
+                (album.albumArt?.mimeType ?? 'image/jpeg') +
+                ';base64,' +
+                (album.albumArt?.data ?? '')
+              "
               class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
             <div
-              *ngIf="!album.coverArt"
+              *ngIf="!album.albumArt?.data"
               class="h-full flex items-center justify-center text-gray-400"
             >
               <span class="material-icons">album</span>
             </div>
           </div>
-
-          <!-- album title section -->
           <div class="text-center">
-            <h3 class="font-medium text-sm truncate">{{ album.title }}</h3>
+            <h3 class="font-medium text-sm truncate">{{ album.name }}</h3>
             <p class="text-xs text-gray-500 mt-1">
               {{ album.year || "Unknown" }}
             </p>
@@ -84,7 +98,6 @@
     </div>
   </div>
 
-  <!-- blank component until artist select -->
   <ng-template #emptyState>
     <div class="h-full flex items-center justify-center text-gray-400 text-sm">
       <div class="text-center">

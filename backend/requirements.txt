@@ -1,3 +1,5 @@
 flask
 flask-cors
-tinytag
+flask-sqlalchemy
+flask-migrate
+mutagen

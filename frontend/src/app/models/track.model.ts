@@ -1,14 +1,23 @@
 export interface Track {
-  filepath: string;
-  filename: string;
+  id: number;
   title: string;
   artist: string;
   album: string;
-  genre: string;
-  bitrate: string;
-  track: number;
-  tracktotal: number;
-  year: string;
+  genre: string | null;
   duration: number;
-  images: { data: string; mime_type: string }[];
+  trackNumber: number;
+  year: number | null;
+  albumArt: {
+    data: string;
+    mimeType: string;
+  } | null;
+}
+
+export interface PaginatedResponse<T> {
+  tracks: T[];
+  pagination: {
+    page: number;
+    pages: number;
+    total: number;
+  };
 }
