@@ -1,4 +1,3 @@
-// src/app/artist/artist.component.ts
 import { Component, DestroyRef, OnInit } from '@angular/core';
 import { ArtistService } from '../services/artist.service';
 import { NavigationService } from '../services/navigation.service';

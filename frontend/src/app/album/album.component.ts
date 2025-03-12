@@ -1,4 +1,3 @@
-// album.component.ts
 import { Component, DestroyRef, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TrackService } from '../services/track.service';
