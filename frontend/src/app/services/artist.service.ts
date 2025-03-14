@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { map, Observable } from 'rxjs';
 import { Artist } from '../models/artist.model';
 
 @Injectable({ providedIn: 'root' })
@@ -14,6 +14,13 @@ export class ArtistService {
   }
 
   getArtistById(artistId: number): Observable<Artist> {
-    return this.http.get<Artist>(`${this.apiBaseUrl}/artists/${artistId}`);
+    return this.http.get<Artist>(`${this.apiBaseUrl}/artists/${artistId}`).pipe(
+      map((response) => {
+        return {
+          ...response,
+          genres: response.genres || [],
+        };
+      })
+    );
   }
 }

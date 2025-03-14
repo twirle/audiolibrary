@@ -25,7 +25,6 @@ Typical media library manager things:
 Separate Flask App + Angular frontend until I port it over to Electron:
 
 Angular:
-`brew install angular-cli`
 `cd frontend`
 `ng serve`
 

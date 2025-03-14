@@ -59,7 +59,7 @@ export class AlbumComponent implements OnInit {
   getTotalDuration(): number {
     if (!this.album?.tracks) return 0;
     return this.album.tracks.reduce(
-      (sum: any, t: { duration: any }) => sum + t.duration,
+      (sum: any, track: { duration: any }) => sum + (track.duration || 0),
       0
     );
   }

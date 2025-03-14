@@ -1,4 +1,5 @@
 <div class="container mx-auto max-w-full px-2 py-2">
+  
   <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
     <table class="min-w-full bg-white text-sm">
       <tbody class="divide-y divide-gray-200">
@@ -11,7 +12,12 @@
             <div class="w-12 h-12 flex items-center justify-center">
               <img
                 *ngIf="track.albumArt"
-                [src]="'data:' + track.albumArt.mimeType + ';base64,' + track.albumArt.data"
+                [src]="
+                  'data:' +
+                  track.albumArt.mimeType +
+                  ';base64,' +
+                  track.albumArt.data
+                "
                 alt="Album Art"
                 class="w-full h-full object-cover rounded-sm"
               />
@@ -43,19 +49,19 @@
       </tbody>
     </table>
   </div>
-  
+
   <!-- Pagination controls -->
   <div class="flex justify-between items-center mt-4 px-4">
-    <button 
-      (click)="loadTracks(currentPage-1)" 
+    <button
+      (click)="loadTracks(currentPage - 1)"
       [disabled]="currentPage === 1"
       class="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
     >
       Previous
     </button>
     <span>Page {{ currentPage }} of {{ totalPages }}</span>
-    <button 
-      (click)="loadTracks(currentPage+1)" 
+    <button
+      (click)="loadTracks(currentPage + 1)"
       [disabled]="currentPage === totalPages"
       class="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
     >

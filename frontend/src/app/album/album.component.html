@@ -32,12 +32,10 @@
           {{ album.name }}
         </h1>
         <p class="text-lg text-gray-600 mb-1">{{ album.artist }}</p>
-        <div class="flex gap-4 text-sm text-gray-500">
+        <div class="flex gap-4 text-xs text-gray-500">
+          <span>{{ album.genre }}</span>
+          <span>&middot;</span>
           <span>{{ album.year }}</span>
-          <span>&middot;</span>
-          <span>{{ album.tracks.length }} tracks</span>
-          <span>&middot;</span>
-          <span>{{ formatDuration(getTotalDuration()) }}</span>
         </div>
       </div>
     </div>
@@ -52,11 +50,11 @@
             [class.bg-gray-50]="i % 2 === 0"
           >
             <div class="py-3 flex items-center gap-4">
-              <span class="text-gray-400 w-8">{{
+              <span class="text-sm text-gray-400 w-6">{{
                 track.trackNumber || i + 1
               }}</span>
               <div class="flex-1">
-                <p class="font-medium text-gray-900">
+                <p class="text-sm text-gray-800">
                   {{ track.title || "Untitled" }}
                 </p>
               </div>
@@ -67,6 +65,17 @@
           </div>
         </div>
       </div>
+    </div>
+    <!-- bottom -->
+    <div class="pt-2 flex gap-2 text-xs text-gray-400">
+      <span class="">
+        {{ album.tracks?.length || 0 }}
+        {{ album.tracks?.length === 1 ? "track" : "tracks" }}
+      </span>
+      <span>&middot;</span>
+      <span class="">
+        {{ formatDuration(getTotalDuration()) }}
+      </span>
     </div>
   </div>
 </div>

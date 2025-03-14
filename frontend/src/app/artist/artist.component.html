@@ -1,6 +1,5 @@
-<!-- artist.component.html -->
 <div class="flex h-screen">
-  <!-- Artist List -->
+  <!-- artist list -->
   <div class="w-64 border-r border-gray-200 bg-white flex-shrink-0">
     <div class="p-4 sticky top-0 bg-white z-10">
       <input
@@ -30,7 +29,7 @@
     </div>
   </div>
 
-  <!-- Artist Details Section -->
+  <!-- artist details -->
   <div class="flex-1 overflow-y-auto p-8 bg-gray-50">
     <div *ngIf="selectedArtist; else emptyState" class="max-w-6xl mx-auto">
       <!-- Artist Header -->
@@ -46,19 +45,21 @@
           {{ selectedArtist.name }}
         </h1>
         <div class="flex items-center gap-2 text-sm text-gray-500">
-          <span
-            *ngFor="let genre of selectedArtist.genres"
-            class="bg-gray-200 px-2 py-1 rounded-full text-xs"
-          >
-            {{ genre }}
-          </span>
-          <span *ngIf="!selectedArtist.genres?.length" class="text-xs">
-            Various genres
-          </span>
+          <ng-container *ngIf="selectedArtist.genres && selectedArtist.genres.length > 0; else noGenres">
+            <span
+              *ngFor="let genre of selectedArtist.genres"
+              class="bg-gray-200 px-2 py-1 rounded-full text-xs"
+            >
+              {{ genre }}
+            </span>
+          </ng-container>
+          <ng-template #noGenres>
+            <span class="text-xs">Various genres</span>
+          </ng-template>
         </div>
       </div>
 
-      <!-- Albums Grid -->
+      <!-- albums grid -->
       <div
         class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4"
       >

@@ -3,20 +3,35 @@ import os
 import hashlib
 from flask import Flask
 from mutagen import File
+from thefuzz import fuzz
 from config import Config
-from models import db, Artist, Album, Genre, AlbumArt, Track
+from models import db, Artist, Album, Genre, AlbumArt, Track, Genre, GenreAlias
+
+genreNormalisation = {
+    'jpop': 'J-Pop',
+    'j-pop': 'J-Pop',
+    'j pop': 'J-Pop',
+    'j rock': 'J-Rock',
+    'j-rock': 'J-Rock',
+    'jrock': 'J-Rock',
+}
 
 
-def normalizeGenre(genre):
+def normaliseGenre(genre):
     if not genre:
         return None
 
-    genreMap = {
-        'jpop': 'J-Pop',
-        'j-pop': 'J-Pop',
-        'j-rock': 'J-Rock'
-    }
-    return genreMap.get(genre.lower().strip(), genre.title())
+    genre = genre.strip()
+    lowerName = genre.lower()
+
+    if lowerName in genreNormalisation:
+        return genreNormalisation[lowerName]
+
+    for alias, canonical in genreNormalisation.items():
+        if fuzz.ratio(lowerName, alias) > 80:
+            return canonical
+
+    return genre.title()
 
 
 def processFile(filepath):
@@ -42,14 +57,21 @@ def processFile(filepath):
             db.session.flush()
 
         # get or create genre
-        genre = None
-        if genreName:
-            normalizedGenre = normalizeGenre(genreName)
-            genre = Genre.query.filter_by(name=normalizedGenre).first()
-            if not genre:
-                genre = Genre(name=normalizedGenre)
-                db.session.add(genre)
-                db.session.flush()
+        normalisedGenre = normaliseGenre(genreName)
+        genre = Genre.query.filter_by(name=normalisedGenre).first()
+        if not genre and normalisedGenre:
+            genre = Genre(name=normalisedGenre)
+            db.session.add(genre)
+            db.session.flush
+
+        # genre = None
+        # if genreName:
+        #     normalizedGenre = normalizeGenre(genreName)
+        #     genre = Genre.query.filter_by(name=normalizedGenre).first()
+        #     if not genre:
+        #         genre = Genre(name=normalizedGenre)
+        #         db.session.add(genre)
+        #         db.session.flush()
 
         # parse year
         year = None
@@ -122,6 +144,31 @@ def processFile(filepath):
     except Exception as e:
         print(f"Error processing {filepath}: {str(e)}")
         return None
+
+
+def addGenreAlias(alias, canonical):
+    genre = Genre.query.filter_by(name=canonical).first()
+    if not genre:
+        return
+    existingAlias = GenreAlias.query.filter_by(alias=alias.lower()).first()
+
+    if not existingAlias:
+        aliasEntry = GenreAlias(alias=alias.lower(), genreId=genre.id)
+        db.session.add(aliasEntry)
+
+
+def updateSourceGenre(filepath, normalisedGenre):
+    try:
+        audio = File(filepath, easy=True)
+
+        # check if update req
+        currentGenre = audio.get('genre', [''][0])
+        if currentGenre != normalisedGenre:
+            audio['genre'] = normalisedGenre
+            audio.save()
+
+    except Exception as e:
+        print("error updating genre in {filepath}: {str(e)}")
 
 
 def main():
