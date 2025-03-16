@@ -5,15 +5,18 @@ import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
 import { RouterModule } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { SearchComponent } from '../search/search.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, HttpClientModule, RouterModule],
+  imports: [CommonModule, HttpClientModule, RouterModule, SearchComponent],
   templateUrl: './home.component.html',
 })
 export class HomeComponent implements OnInit {
   tracks: Track[] = [];
+  filteredTracks: Track[] = [];
+  searchTerm: string = '';
   currentPage = 1;
   totalPages = 1;
 
@@ -33,11 +36,29 @@ export class HomeComponent implements OnInit {
       .subscribe({
         next: (response) => {
           this.tracks = response.tracks;
+          this.filteredTracks = [...this.tracks];
           this.currentPage = response.pagination.page;
           this.totalPages = response.pagination.pages;
         },
         error: (error) => console.error('Error:', error),
       });
+  }
+
+  onSearchChanged(searchTerm: string): void {
+    this.searchTerm = searchTerm;
+
+    if (!this.searchTerm) {
+      this.filteredTracks = [...this.tracks];
+      return;
+    }
+
+    const term = searchTerm.toLowerCase();
+    this.filteredTracks = this.tracks.filter(
+      (track) =>
+        track.title?.toLowerCase().includes(term) ||
+        track.artist?.toLowerCase().includes(term) ||
+        track.album?.toLowerCase().includes(term)
+    );
   }
 
   formatDuration(duration: number): string {

@@ -1,0 +1,38 @@
+<div class="relative">
+  <!-- container -->
+  <div class="relative flex items-center w-full">
+    <div
+      class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+    >
+      <span class="material-icons text-lg">search</span>
+    </div>
+
+    <!-- search input -->
+    <input
+      #searchInput
+      type="text"
+      [formControl]="searchControl"
+      placeholder="Search..."
+      class="w-full bg-gray-50 border border-gray-200 text-sm text-gray-800 rounded-lg pl-10 pr-8 py-1.5 focus: ring-blue-400 focus:border-blue-400 transition-all duration-200 outline-none"
+    />
+
+    <!-- keyboard shortcut indicator -->
+    <div
+      *ngIf="!searchControl.value"
+      class="absolute right-3 top-1/2 transform -translate-y-1/2"
+    >
+      <span class="px-1.5 py-0.5 bg-gray-200 text-gray-500 text-xs rounded-md"
+        >Alt+K</span
+      >
+    </div>
+
+    <!-- clear -->
+    <div
+      *ngIf="searchControl.value"
+      (click)="clearSearch()"
+      class="absolute right-3 cursor-pointer text-gray-400 hover:text-gray-500"
+    >
+      <span class="material-icons text-lg">close</span>
+    </div>
+  </div>
+</div>
