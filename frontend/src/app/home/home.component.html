@@ -1,6 +1,6 @@
-<div class="container mx-auto max-w-full px-2 py-2">
+<div class="container mx-auto max-w-full px-2 py-2 flex flex-col h-dvh">
   <!-- search result -->
-  <div class="max-w-md mx-auto mb-2">
+  <div class="w-full max-w-sm mx-auto mb-2">
     <app-search (searchChanged)="onSearchChanged($event)"></app-search>
   </div>
 
@@ -12,15 +12,23 @@
     }}"
   </div>
 
-  <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-    <table class="min-w-full bg-white text-sm">
-      <tbody class="divide-y divide-gray-200">
-        <tr
-          *ngFor="let track of filteredTracks; let i = index"
-          class="hover:bg-gray-200"
-          [class.bg-gray-50]="i % 2 !== 0"
-        >
-          <td class="px-5 py-2 align-middle">
+  <div
+    class="flex-1 flex flex-col rounded-lg border border-gray-200 shadow-sm overflow-hidden"
+  >
+    <cdk-virtual-scroll-viewport itemSize="45" class="w-full h-full">
+      <table
+        cdk-table
+        [dataSource]="filteredTracks"
+        class="min-w-full bg-white text-sm table-fixed"
+      >
+        <!-- album art column -->
+        <ng-container cdkColumnDef="albumArt">
+          <th
+            cdk-header-cell
+            *cdkHeaderCellDef
+            class="w-16 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase bg-gray-100"
+          ></th>
+          <td cdk-cell *cdkCellDef="let track" class="w-16 px-3 py-2">
             <div class="w-12 h-12 flex items-center justify-center">
               <img
                 *ngIf="track.albumArt"
@@ -41,43 +49,98 @@
               </div>
             </div>
           </td>
-          <td class="px-3 py-2 text-gray-900 max-w-[200px] truncate">
+        </ng-container>
+
+        <!-- title  -->
+        <ng-container cdkColumnDef="title">
+          <th
+            cdk-header-cell
+            *cdkHeaderCellDef
+            class="w-1/4 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase bg-gray-100"
+          >
+            Title
+          </th>
+          <td cdk-cell *cdkCellDef="let track" class="w-1/4 px-3 py-2 truncate">
             {{ track.title }}
           </td>
-          <td class="px-3 py-2 text-gray-900">{{ track.artist }}</td>
-          <td class="px-3 py-2 text-gray-900">
+        </ng-container>
+
+        <!-- artist -->
+        <ng-container cdkColumnDef="artist">
+          <th
+            cdk-header-cell
+            *cdkHeaderCellDef
+            class="w-1/5 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase bg-gray-100"
+          >
+            Artist
+          </th>
+          <td cdk-cell *cdkCellDef="let track" class="w-1/5 px-3 py-2 truncate">
+            {{ track.artist }}
+          </td>
+        </ng-container>
+
+        <!-- album -->
+        <ng-container cdkColumnDef="album">
+          <th
+            cdk-header-cell
+            *cdkHeaderCellDef
+            class="w-1/4 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase bg-gray-100"
+          >
+            Album
+          </th>
+          <td cdk-cell *cdkCellDef="let track" class="w-1/4 px-3 py-2 truncate">
             <a
-              [routerLink]="['/album', track.id]"
-              class="text-gray-900 hover:text-gray-500"
+              [routerLink]="['/album', track.albumId]"
+              class="hover:text-gray-500 block truncate"
             >
               {{ track.album }}
             </a>
           </td>
-          <td class="px-3 py-2 text-gray-900">{{ track.year }}</td>
-          <td class="px-3 py-2 text-gray-900">
+        </ng-container>
+
+        <!-- year -->
+        <ng-container cdkColumnDef="year">
+          <th
+            cdk-header-cell
+            *cdkHeaderCellDef
+            class="w-16 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase bg-gray-100"
+          >
+            Year
+          </th>
+          <td cdk-cell *cdkCellDef="let track" class="w-16 px-3 py-2">
+            {{ track.year }}
+          </td>
+        </ng-container>
+
+        <!-- duration  -->
+        <ng-container cdkColumnDef="duration">
+          <th
+            cdk-header-cell
+            *cdkHeaderCellDef
+            class="w-16 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase bg-gray-100"
+          >
+            Duration
+          </th>
+          <td cdk-cell *cdkCellDef="let track" class="w-16 px-3 py-2">
             {{ formatDuration(track.duration) }}
           </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+        </ng-container>
 
-  <!-- Pagination controls -->
-  <div class="flex justify-between items-center mt-4 px-4">
-    <button
-      (click)="loadTracks(currentPage - 1)"
-      [disabled]="currentPage === 1"
-      class="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
-    >
-      Previous
-    </button>
-    <span>Page {{ currentPage }} of {{ totalPages }}</span>
-    <button
-      (click)="loadTracks(currentPage + 1)"
-      [disabled]="currentPage === totalPages"
-      class="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
-    >
-      Next
-    </button>
+        <!-- header row with sticky positioning -->
+        <tr
+          cdk-header-row
+          *cdkHeaderRowDef="displayedColumns; sticky: true"
+          class="border-b border-gray-200"
+        ></tr>
+
+        <!-- data rows -->
+        <tr
+          cdk-row
+          *cdkRowDef="let track; columns: displayedColumns; let i = index"
+          class="h-[45px] hover:bg-gray-200 border-b border-gray-200"
+          [class.bg-gray-50]="i % 2 !== 0"
+        ></tr>
+      </table>
+    </cdk-virtual-scroll-viewport>
   </div>
 </div>

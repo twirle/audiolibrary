@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { map, Observable } from 'rxjs';
 import { Track, PaginatedResponse } from '../models/track.model';
 
 @Injectable({ providedIn: 'root' })
@@ -9,6 +9,7 @@ export class TrackService {
 
   constructor(private http: HttpClient) {}
 
+  // for old pagination
   getTracks(
     page: number = 1,
     perPage: number = 100
@@ -16,6 +17,12 @@ export class TrackService {
     return this.http.get<PaginatedResponse<Track>>(
       `${this.apiBaseUrl}/tracks?page=${page}&per_page=${perPage}`
     );
+  }
+
+  getAllTracks(): Observable<Track[]> {
+    return this.http
+      .get<PaginatedResponse<Track>>(`${this.apiBaseUrl}/tracks?per_page=5000`)
+      .pipe(map((response) => response.tracks));
   }
 
   getAlbumById(albumId: number): Observable<any> {

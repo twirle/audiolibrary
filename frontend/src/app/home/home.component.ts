@@ -1,16 +1,32 @@
 import { Component, DestroyRef, OnInit } from '@angular/core';
-import { TrackService } from '../services/track.service';
-import { Track } from '../models/track.model';
 import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
 import { RouterModule } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
+import { CdkTableModule } from '@angular/cdk/table';
+import { ScrollingModule } from '@angular/cdk/scrolling';
+import {
+  TableVirtualScrollModule,
+  TableVirtualScrollDataSource,
+} from 'ng-table-virtual-scroll';
+
+import { Track } from '../models/track.model';
+import { TrackService } from '../services/track.service';
 import { SearchComponent } from '../search/search.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, HttpClientModule, RouterModule, SearchComponent],
+  imports: [
+    CommonModule,
+    HttpClientModule,
+    RouterModule,
+    SearchComponent,
+    ScrollingModule,
+    CdkTableModule,
+    TableVirtualScrollModule,
+  ],
   templateUrl: './home.component.html',
 })
 export class HomeComponent implements OnInit {
@@ -20,25 +36,37 @@ export class HomeComponent implements OnInit {
   currentPage = 1;
   totalPages = 1;
 
+  // home component columns
+  displayedColumns: string[] = [
+    'albumArt',
+    'title',
+    'artist',
+    'album',
+    'year',
+    'duration',
+  ];
+  mobileColumns: string[] = ['albumArt', 'title', 'artist', 'album'];
+  dataSource = new TableVirtualScrollDataSource<Track>();
+
   constructor(
     private trackService: TrackService,
     private destroyRef: DestroyRef
   ) {}
 
   ngOnInit(): void {
-    this.loadTracks();
+    this.loadAllTracks();
   }
 
-  loadTracks(page: number = 1): void {
+  loadAllTracks(): void {
     this.trackService
-      .getTracks(page)
+      .getAllTracks()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (response) => {
-          this.tracks = response.tracks;
+        next: (tracks) => {
+          console.log('sample track:', tracks[1]);
+          this.tracks = tracks;
           this.filteredTracks = [...this.tracks];
-          this.currentPage = response.pagination.page;
-          this.totalPages = response.pagination.pages;
+          this.dataSource.data = this.filteredTracks;
         },
         error: (error) => console.error('Error:', error),
       });
@@ -49,16 +77,17 @@ export class HomeComponent implements OnInit {
 
     if (!this.searchTerm) {
       this.filteredTracks = [...this.tracks];
-      return;
+    } else {
+      const term = searchTerm.toLowerCase();
+      this.filteredTracks = this.tracks.filter(
+        (track) =>
+          track.title?.toLowerCase().includes(term) ||
+          track.artist?.toLowerCase().includes(term) ||
+          track.album?.toLowerCase().includes(term)
+      );
     }
 
-    const term = searchTerm.toLowerCase();
-    this.filteredTracks = this.tracks.filter(
-      (track) =>
-        track.title?.toLowerCase().includes(term) ||
-        track.artist?.toLowerCase().includes(term) ||
-        track.album?.toLowerCase().includes(term)
-    );
+    this.dataSource.data = this.filteredTracks;
   }
 
   formatDuration(duration: number): string {

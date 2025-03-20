@@ -37,7 +37,6 @@ export class SearchComponent implements OnInit {
   @HostListener('window:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent) {
     if (event.altKey && event.key === 'k') {
-      console.log('aaaaa');
       event.preventDefault();
 
       setTimeout(() => {

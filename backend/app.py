@@ -34,6 +34,7 @@ def getTracks():
             'title': t.title,
             'artist': t.artist.name if t.artist else 'Unknown',
             'album': t.album.name if t.album else 'Unknown',
+            'albumId': t.album.id,
             'genre': t.genre.name if t.genre else None,
             'duration': t.duration,
             'trackNumber': t.trackNumber,

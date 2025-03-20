@@ -34,18 +34,24 @@
     <div *ngIf="selectedArtist; else emptyState" class="max-w-6xl mx-auto">
       <!-- Artist Header -->
       <div class="mb-8">
-        <button
+        <!-- button to clear artist -->
+        <!-- <button
           (click)="clearSelection()"
           class="mb-4 flex items-center text-blue-600 hover:text-blue-800"
         >
           <span class="material-icons mr-1">arrow_back</span>
           Back to All Artists
-        </button>
+        </button> -->
         <h1 class="text-2xl font-bold text-gray-900 mb-2">
           {{ selectedArtist.name }}
         </h1>
         <div class="flex items-center gap-2 text-sm text-gray-500">
-          <ng-container *ngIf="selectedArtist.genres && selectedArtist.genres.length > 0; else noGenres">
+          <ng-container
+            *ngIf="
+              selectedArtist.genres && selectedArtist.genres.length > 0;
+              else noGenres
+            "
+          >
             <span
               *ngFor="let genre of selectedArtist.genres"
               class="bg-gray-200 px-2 py-1 rounded-full text-xs"

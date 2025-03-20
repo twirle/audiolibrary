@@ -193,7 +193,8 @@ class Track(db.Model):
             'duration': self.duration,
             'trackNumber': self.trackNumber,
             'year': self.year,
-            'filepath': self.filepath
+            'filepath': self.filepath,
+            'albumId': self.albumId
         }
 
         if include_relations:
