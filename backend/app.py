@@ -1,14 +1,18 @@
-from flask import Flask, jsonify, request
+from datetime import datetime
+import os
+from threading import Thread
+from flask import Flask, jsonify, request, current_app
 from flask_cors import CORS
 from flask_migrate import Migrate
-from models import db, Artist, Album, Genre, AlbumArt, Track, GenreAlias
+from models import Setting, db, Artist, Album, Genre, AlbumArt, Track, GenreAlias, init_db
+from load import scanLibrary
 from config import Config
 from sqlalchemy import func
 
 app = Flask(__name__)
 app.config.from_object(Config)
 CORS(app)
-db.init_app(app)
+init_db(app)
 migrate = Migrate(app, db)
 
 
@@ -132,6 +136,51 @@ def searchGenres():
     genres = Genre.query.filter(Genre.id.in_(genreIds)).all()
 
     return jsonify([genre.serialize() for genre in genres])
+
+
+@app.route('/api/get-audio-directory')
+def getAudioDirectory():
+    path = Setting.get('audio_directory', app.config.get('AUDIO_DIRECTORY'))
+    return jsonify({'path': path})
+
+
+@app.route('/api/set-audio-directory', methods=['POST'])
+def setAudioDirectory():
+    path = request.json.get('path')
+
+    # check path exists
+    if not os.path.exists(path):
+        return jsonify({'error': 'Directory not found'}), 400
+
+    # store path in dataabse
+    Setting.set('audio_directory', path)
+
+    # update running config
+    app.config['AUDIO_DIRECTORY'] = path
+    return jsonify({'success': True})
+
+
+@app.route('/api/scan-library', methods=['POST'])
+def handleScanLibrary():
+    requestData = request.get_json()
+    path = requestData.get('path')
+
+    # path from settings
+    if not path:
+        path = Setting.get('music_folder', current_app.config['MUSIC_FOLDER'])
+
+    # check path exist
+    if not os.path.exists(path):
+        return jsonify({'error': 'Invalid directory'}), 400
+
+    # run in background thread, KEEP THE ',' AFTER PATH; args=(path, )
+    Thread(target=scanLibrary, args=(path,), daemon=True).start()
+
+    return jsonify({
+        'status': 'started',
+        'path': path,
+        'timestamp': datetime.now().isoformat()
+    })
 
 
 if __name__ == '__main__':

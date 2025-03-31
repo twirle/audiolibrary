@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 
 class Config:
@@ -8,10 +9,22 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # Audio file location
+    # audio file source
+    DEFAULT_MUSIC_FOLDER = [
+        str(Path.home()),
+        "/Volumes",
+    ]
+
+    # current hardcoded source
     AUDIO_DIRECTORY = "/mnt/h/FLAC Music/Tatsuro Yamashita (山下達郎)"
 
-    # Performance optimizations
+    ALLOWED_PATHS = []
+
+    ALLOWED_PATHS.extend(DEFAULT_MUSIC_FOLDER)
+    ALLOWED_PATHS.extend(AUDIO_DIRECTORY)
+    ALLOWED_PATHS.extend('/mnt/h/FLAC Music')
+
+    # Engine options remain the same
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
         "pool_recycle": 300

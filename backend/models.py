@@ -1,7 +1,14 @@
+from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 
 db = SQLAlchemy()
+
+
+def init_db(app: Flask):
+    db.init_app(app)
+    with app.app_context():
+        db.create_all()
 
 
 class Artist(db.Model):
@@ -206,3 +213,24 @@ class Track(db.Model):
             })
 
         return result
+
+
+class Setting(db.Model):
+    __tablename__ = 'settings'
+    key = db.Column(db.String(50), primary_key=True)
+    value = db.Column(db.String(255), nullable=False)
+
+    @classmethod
+    def get(cls, key, default=None):
+        setting = cls.query.get(key)
+        return setting.value if setting else default
+
+    @classmethod
+    def set(cls, key, value):
+        setting = cls.query.get(key)
+        if setting:
+            setting.value = value
+        else:
+            setting = cls(key=key, value=value)
+        db.session.add(setting)
+        db.session.commit()

@@ -63,7 +63,7 @@ export class HomeComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (tracks) => {
-          console.log('sample track:', tracks[1]);
+          // console.log('sample track:', tracks[1]);
           this.tracks = tracks;
           this.filteredTracks = [...this.tracks];
           this.dataSource.data = this.filteredTracks;

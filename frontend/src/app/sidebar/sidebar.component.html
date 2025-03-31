@@ -1,8 +1,14 @@
 <nav
-  class="fixed left-0 top-0 h-full w-48 bg-white text-gray-900 border border-gray-200 transition-all hover:w-48 group"
+  class="fixed left-0 top-0 h-full w-48 bg-white border-r border-gray-200 transition-all hover:w-48 group"
 >
-  <div class="p-2">
+  <div class="p-3 flex justify-between items-center">
     <h2 class="text-xl text-center font-bold truncate">audiolibrary</h2>
+    <a
+      [routerLink]="['/settings']"
+      class="cursor-pointer hover:bg-gray-100 p-1 rounded-full"
+    >
+      <span class="material-icons text-lg">settings</span>
+    </a>
   </div>
 
   <ul class="space-y-2 px-2">

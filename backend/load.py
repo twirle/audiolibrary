@@ -1,7 +1,7 @@
 import base64
 import os
 import hashlib
-from flask import Flask
+from pathlib import Path
 from mutagen import File
 from thefuzz import fuzz
 from config import Config
@@ -24,13 +24,32 @@ def normaliseGenre(genre):
     genre = genre.strip()
     lowerName = genre.lower()
 
+    # check direct matches
     if lowerName in genreNormalisation:
         return genreNormalisation[lowerName]
 
-    for alias, canonical in genreNormalisation.items():
-        if fuzz.ratio(lowerName, alias) > 80:
-            return canonical
+    # check aliases from database
+    alias = GenreAlias.query.filter_by(alias=lowerName).first()
+    if alias:
+        return alias.genre.name
 
+    # fuzz match against existing genres
+    allGenres = Genre.query.all()
+    bestMatch = None
+    bestScore = 0
+
+    for genre in allGenres:
+        score = fuzz.ratio(lowerName, genre.name.lower())
+        if score > 85 and score > bestScore:
+            bestScore = score
+            bestMatch = genre.name
+
+    if bestMatch:
+        # add as new alias
+        addGenreAlias(lowerName, bestMatch)
+        return bestMatch
+
+    # fallback to title as base
     return genre.title()
 
 
@@ -50,7 +69,7 @@ def processFile(filepath):
         genreName = (audio.get('genre', [''])[0] or '').strip() or None
 
         # get or create artist
-        artist = Artist.query.filter_by(name=artistName).first()
+        artist = db.session.query(Artist).filter_by(name=artistName).first()
         if not artist:
             artist = Artist(name=artistName)
             db.session.add(artist)
@@ -58,20 +77,11 @@ def processFile(filepath):
 
         # get or create genre
         normalisedGenre = normaliseGenre(genreName)
-        genre = Genre.query.filter_by(name=normalisedGenre).first()
+        genre = db.session.query(Genre).filter_by(name=normalisedGenre).first()
         if not genre and normalisedGenre:
             genre = Genre(name=normalisedGenre)
             db.session.add(genre)
             db.session.flush
-
-        # genre = None
-        # if genreName:
-        #     normalizedGenre = normalizeGenre(genreName)
-        #     genre = Genre.query.filter_by(name=normalizedGenre).first()
-        #     if not genre:
-        #         genre = Genre(name=normalizedGenre)
-        #         db.session.add(genre)
-        #         db.session.flush()
 
         # parse year
         year = None
@@ -94,7 +104,8 @@ def processFile(filepath):
                     imageData = base64.b64encode(picture.data).decode('utf-8')
                     imageHash = hashlib.sha256(picture.data).hexdigest()
 
-                    albumArt = AlbumArt.query.filter_by(hash=imageHash).first()
+                    albumArt = db.session.query(AlbumArt).filter_by(
+                        hash=imageHash).first()
                     if not albumArt:
                         albumArt = AlbumArt(
                             hash=imageHash,
@@ -107,7 +118,7 @@ def processFile(filepath):
                 break
 
         # get or create album
-        album = Album.query.filter_by(
+        album = db.session.query(Album).filter_by(
             name=albumName, artistId=artist.id).first()
         if not album:
             album = Album(
@@ -142,6 +153,7 @@ def processFile(filepath):
 
         return track
     except Exception as e:
+        db.session.rollback()
         print(f"Error processing {filepath}: {str(e)}")
         return None
 
@@ -160,61 +172,126 @@ def addGenreAlias(alias, canonical):
 def updateSourceGenre(filepath, normalisedGenre):
     try:
         audio = File(filepath, easy=True)
-
-        # check if update req
-        currentGenre = audio.get('genre', [''][0])
+        currentGenre = audio.get('genre', [''])[0]
         if currentGenre != normalisedGenre:
             audio['genre'] = normalisedGenre
             audio.save()
 
     except Exception as e:
-        print("error updating genre in {filepath}: {str(e)}")
+        print(f"error updating genre in {filepath}: {str(e)}")
+
+
+def scanLibrary(path: str):
+    from app import app
+    from sqlalchemy import select
+
+    with app.app_context():
+        total_files = 0
+        success_count = 0
+        error_count = 0
+        deleted_count = 0
+
+        try:
+            # Validate path
+            if not any(path.startswith(p) for p in app.config['ALLOWED_PATHS']):
+                app.logger.error(f"Unauthorized scan path: {path}")
+                return {'status': 'error', 'message': 'Path not allowed'}
+
+            # Phase 1: Process files
+            for root, _, files in os.walk(path):
+                for file in files:
+                    if file.lower().endswith(('.flac', '.mp3', '.wav')):
+                        total_files += 1
+                        filepath = os.path.join(root, file)
+
+                        try:
+                            # Check existing track using exists()
+                            exists = db.session.query(
+                                Track.id
+                            ).filter_by(filepath=filepath).scalar()
+
+                            if exists:
+                                continue
+
+                            with db.session.begin_nested():
+                                track = processFile(filepath)
+                                if track:
+                                    db.session.add(track)
+                                    success_count += 1
+
+                                    if track.genre:
+                                        updateSourceGenre(
+                                            filepath, track.genre.name)
+
+                            # Batch processing
+                            if total_files % 100 == 0:
+                                db.session.flush()
+
+                        except Exception as e:
+                            db.session.rollback()
+                            error_count += 1
+                            app.logger.error(
+                                f"Error processing {filepath}: {str(e)}")
+
+            # Final commit for processed files
+            db.session.commit()
+
+            # Phase 2: Cleanup deleted files
+            stmt = select(Track.id, Track.filepath).execution_options(
+                yield_per=1000)
+            deleted_count = 0
+
+            for row in db.session.execute(stmt):
+                try:
+                    # Check if file exists AND starts with the current scan path
+                    if not Path(row.filepath).exists() or not row.filepath.startswith(path):
+                        track = db.session.get(Track, row.id)
+                        if track:
+                            db.session.delete(track)
+                            deleted_count += 1
+
+                            if deleted_count % 100 == 0:
+                                db.session.commit()
+                except Exception as e:
+                    db.session.rollback()
+                    app.logger.error(
+                        f"Error deleting track {row.id}: {str(e)}")
+
+            # Final commit for deletions
+            db.session.commit()
+
+            return {
+                'total': total_files,
+                'success': success_count,
+                'errors': error_count,
+                'removed': deleted_count
+            }
+
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Scan aborted: {str(e)}")
+            return {
+                'status': 'error',
+                'message': str(e),
+                'partial_results': {
+                    'total': total_files,
+                    'success': success_count,
+                    'errors': error_count,
+                    'removed': deleted_count
+                }
+            }
 
 
 def main():
-    app = Flask(__name__)
+    from app import app
     app.config.from_object(Config)
-    db.init_app(app)
 
     with app.app_context():
+        # initialise db
         db.create_all()
 
-        count = 0
-        successCount = 0
-        errorCount = 0
-
-        for root, _, files in os.walk(Config.AUDIO_DIRECTORY):
-            for file in files:
-                if file.lower().endswith(('.flac', '.mp3', '.wav')):
-                    filepath = os.path.join(root, file)
-                    count += 1
-
-                    try:
-                        with db.session.begin_nested():  # savepoint
-                            track = processFile(filepath)
-                            if track:
-                                db.session.add(track)
-                                print(f"✓ Processed [{count}]: {filepath}")
-                                successCount += 1
-                    except Exception as e:
-                        db.session.rollback()
-                        print(f"✗ Error [{count}]: {filepath} - {str(e)}")
-                        errorCount += 1
-
-                    # commit every 100 tracks to avoid large transactions
-                    if count % 100 == 0:
-                        db.session.commit()
-                        print(f"Committed batch: {count} tracks processed")
-
-        # final commit
-        try:
-            db.session.commit()
-            print(f"Database populated successfully!")
-            print(
-                f"Total: {count} | Success: {successCount} | Errors: {errorCount}")
-        except Exception as e:
-            db.session.rollback()
-            print(f"Final commit failed: {str(e)}")
+        # scan default directory
+        scanLibrary(app, Config.AUDIO_DIRECTORY)
 
 
 if __name__ == "__main__":

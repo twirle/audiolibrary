@@ -1,0 +1,27 @@
+{
+  "dependencies": {
+    "@angular/cdk": "^19.2.6",
+    "@angular/cli": "^19.2.4",
+    "@angular/common": "^19.2.3",
+    "@angular/compiler": "^19.2.3",
+    "@angular/core": "^19.2.3",
+    "@angular/forms": "^19.2.3",
+    "@angular/material": "^19.2.6",
+    "@angular/platform-browser": "^19.2.3",
+    "@angular/platform-browser-dynamic": "^19.2.3",
+    "@angular/router": "^19.2.3",
+    "@tailwindcss/postcss": "^4.0.15",
+    "jquery": "^3.7.1",
+    "jstree": "^3.3.17",
+    "listr2": "^8.2.5",
+    "ng-table-virtual-scroll": "^1.6.1",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.0.15"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "^19.2.4",
+    "@types/jquery": "^3.5.32",
+    "@types/jstree": "^3.3.46",
+    "log-update": "^6.1.0"
+  }
+}
