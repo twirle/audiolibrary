@@ -1,9 +1,9 @@
 import { Component, DestroyRef, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { TrackService } from '../services/track.service';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { AlbumService } from '../services/album.service';
 
 @Component({
   selector: 'app-album',
@@ -18,14 +18,11 @@ export class AlbumComponent implements OnInit {
 
   constructor(
     private route: ActivatedRoute,
-    private trackService: TrackService,
+    private albumService: AlbumService,
     private destroyRef: DestroyRef,
     private router: Router
   ) {
     const navigation = this.router.getCurrentNavigation();
-    // console.log('Navigation state received:', navigation?.extras?.state);
-    // console.log('Scroll position:', navigation?.extras?.state?.['scrollPosition']);
-
     this.returnToArtist = navigation?.extras.state?.['returnToArtist'];
     this.scrollPosition = navigation?.extras.state?.['scrollPosition'] || 0;
   }
@@ -39,14 +36,29 @@ export class AlbumComponent implements OnInit {
           this.loadAlbum(+albumId);
         }
       });
+
+    this.albumService.currentAlbum$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((album) => {
+        if (album) {
+          this.album;
+        }
+      });
   }
 
   loadAlbum(albumId: number): void {
-    this.trackService.getAlbumById(albumId).subscribe({
+    this.albumService.getAlbumById(albumId).subscribe({
       next: (album) => {
-        this.album = album;
+        if (album) {
+          this.album = album;
+        } else {
+          this.router.navigate(['/home']); // navigate to a safe route
+        }
       },
-      error: (err) => console.error('Error loading album:', err),
+      error: (err) => {
+        console.error('Error loading album:', err);
+        this.router.navigate(['/home']); // navigate to a safe route on error
+      },
     });
   }
 

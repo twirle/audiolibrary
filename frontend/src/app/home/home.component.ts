@@ -33,10 +33,9 @@ export class HomeComponent implements OnInit {
   tracks: Track[] = [];
   filteredTracks: Track[] = [];
   searchTerm: string = '';
-  currentPage = 1;
-  totalPages = 1;
+  loading = false;
+  hasMoreTracks = true;
 
-  // home component columns
   displayedColumns: string[] = [
     'albumArt',
     'title',
@@ -54,31 +53,61 @@ export class HomeComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.loadAllTracks();
+    this.trackService.tracks$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((tracks) => {
+        this.tracks = tracks;
+        this.applySearch();
+      });
+
+    this.loadInitialTracks();
   }
 
-  loadAllTracks(): void {
+  loadInitialTracks(): void {
+    this.loading = true;
     this.trackService
-      .getAllTracks()
+      .initializeVirtualScrolling(500)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (tracks) => {
-          // console.log('sample track:', tracks[1]);
-          this.tracks = tracks;
-          this.filteredTracks = [...this.tracks];
-          this.dataSource.data = this.filteredTracks;
+        next: () => {
+          this.loading = false;
         },
-        error: (error) => console.error('Error:', error),
+        error: (error) => {
+          console.error('Error loading initial tracks:', error);
+          this.loading = false;
+        },
+      });
+  }
+
+  loadMoreTracks(): void {
+    if (this.loading || !this.hasMoreTracks) return;
+
+    this.loading = true;
+    this.trackService
+      .loadMoreTracks(200)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (hasMore) => {
+          this.hasMoreTracks = hasMore;
+          this.loading = false;
+        },
+        error: (error) => {
+          console.error('Error loading more tracks:', error);
+          this.loading = false;
+        },
       });
   }
 
   onSearchChanged(searchTerm: string): void {
     this.searchTerm = searchTerm;
+    this.applySearch();
+  }
 
+  private applySearch(): void {
     if (!this.searchTerm) {
       this.filteredTracks = [...this.tracks];
     } else {
-      const term = searchTerm.toLowerCase();
+      const term = this.searchTerm.toLowerCase();
       this.filteredTracks = this.tracks.filter(
         (track) =>
           track.title?.toLowerCase().includes(term) ||
@@ -86,11 +115,11 @@ export class HomeComponent implements OnInit {
           track.album?.toLowerCase().includes(term)
       );
     }
-
     this.dataSource.data = this.filteredTracks;
   }
 
   formatDuration(duration: number): string {
+    if (!duration) return '--:--';
     const minutes = Math.floor(duration / 60);
     const seconds = Math.floor(duration % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;

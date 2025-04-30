@@ -1,17 +1,17 @@
 ## audiolibrary
 
-Web application to manage and and build (not play) your playlists. Recursively searches and reads your audio files from a targeted folder(s), retrieving metadata for display in a layout similar to iTunes. Allows for drag and drop into playlist which then saves into .fpl or .m3u8 playlists files for your media player.
+Web application to manage and and build your playlists. Recursively searches and reads your audio files from a targeted folder(s), retrieving metadata for display in a layout similar to iTunes. Allows for drag and drop into playlist which then saves into .fpl or .m3u8 playlists files for your media player.
 
-Planning to port to Electron to allow for direct access to local audio files without browser limitation.
+Planning to port to Electron to allow for direct access to local audio files without address.
 
 ### Current Features
 
-Typical media library manager things:
-
-- **full listing of tracks in folder(s):** view all your tracks
-- **artist search:** searchbar for artists;
-- **artist + album page:** filter albums by artists
+- **full listing of tracks in source directory**
+  - change source directory in settings page (requires copy paste of current directory for now)
+- **track/album/artist search:** alt+k for searchbar;
+- **artist + album page:**
   - **album information:** view album art, album title, artist, year, genre, and total album runtime
+  - **artist filter** search specifically for an artist and display all albums from that artist
 
 ### Stack
 
@@ -22,7 +22,7 @@ Typical media library manager things:
 
 ### Run
 
-Separate Flask App + Angular frontend until I port it over to Electron:
+Separate Flask App + Angular frontend until I wrap up main features and port it over to Electron:
 
 Angular:
 `cd frontend`
@@ -35,6 +35,5 @@ Flask:
 ### Work in Progress
 
 - **sliding metadata panel:** seamlessly pop in metadata from the right and hides after
-- **playlists:** Drag and drop selected tracks in to playlist boxes
-- **overall searchbar:** somewhere on top left or top
-  - **spotlight search:** powertoys/macbook spotlight search, alt+space or alt+k or something
+- **playlists:** drag and drop selected tracks in to playlist boxes
+- **integration with LLM:** recommend/generate playlist based on genre/artist/year input

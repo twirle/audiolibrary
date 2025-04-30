@@ -2,7 +2,9 @@ import base64
 import os
 import hashlib
 from pathlib import Path
+from flask import current_app
 from mutagen import File
+from sqlalchemy import inspect, text
 from thefuzz import fuzz
 from config import Config
 from models import db, Artist, Album, Genre, AlbumArt, Track, Genre, GenreAlias
@@ -280,6 +282,22 @@ def scanLibrary(path: str):
                     'removed': deleted_count
                 }
             }
+
+
+def clearDatabase():
+    try:
+        db.session.close()
+        db.engine.dispose()
+
+        with current_app.app_context():
+            db.drop_all()
+            db.create_all()
+
+        current_app.logger.info("Database successfully reset")
+        return True
+    except Exception as e:
+        current_app.logger.error(f"Error clearing database: {str(e)}")
+        return False
 
 
 def main():

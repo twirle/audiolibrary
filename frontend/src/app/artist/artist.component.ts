@@ -27,16 +27,15 @@ export class ArtistComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // load all artists
-    this.artistService
-      .getArtists()
+    // subscribe to artists$ Observable
+    this.artistService.artists$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (artists) => {
           this.artists = artists;
           this.checkForArtistInRoute();
         },
-        error: (err) => console.error('Error loading artists:', err),
+        error: (err) => console.error('Error with artists subscription:', err),
       });
   }
 
@@ -56,12 +55,12 @@ export class ArtistComponent implements OnInit {
       if (artistId) {
         this.selectArtistById(+artistId);
       } else {
-        // Check navigation state
+        // check navigation state
         const state = this.router.getCurrentNavigation()?.extras.state;
         if (state?.['artistId']) {
           this.selectArtistById(state['artistId']);
         } else {
-          // Check stored state
+          // check stored state
           const storedState = this.navigation.getStoredArtistState();
           if (storedState?.artistId) {
             this.selectArtistById(storedState.artistId);
@@ -80,7 +79,13 @@ export class ArtistComponent implements OnInit {
           scrollPosition: window.scrollY,
         });
       },
-      error: (err) => console.error('Error loading artist details:', err),
+      error: (err) => {
+        if (err.status === 404) {
+          this.selectedArtist = null;
+          console.log('Artist not found, it may have been deleted');
+        }
+        console.error('Error loading artist details:', err);
+      },
     });
   }
 

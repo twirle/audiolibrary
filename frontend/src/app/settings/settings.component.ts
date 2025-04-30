@@ -2,6 +2,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { OnInit, Component } from '@angular/core';
+import { PreferencesService } from '../services/preferences.service';
+import { error } from 'jquery';
 
 declare const $: any;
 
@@ -15,8 +17,15 @@ declare const $: any;
 export class SettingsComponent implements OnInit {
   audioDirectoryPath: string = '';
   isScanning: boolean = false;
+  confirmReset: boolean = false;
+  isSaving: boolean = false;
+  hasSaved: boolean = false;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private preferencesService: PreferencesService
+  ) {}
+
   ngOnInit(): void {
     this.getAudioDirectory();
   }
@@ -31,13 +40,22 @@ export class SettingsComponent implements OnInit {
   }
 
   saveAudioDirectory(): void {
+    this.isSaving = true;
+
     this.http
       .post('/api/set-audio-directory', { path: this.audioDirectoryPath })
       .subscribe({
         next: () => {
-          alert('Audio directory saved successfully');
+          this.isSaving = false;
+          this.hasSaved = true;
+
+          // reset after 2 seconds
+          setTimeout(() => {
+            this.hasSaved = false;
+          }, 2000);
         },
         error: (error) => {
+          this.isSaving = false;
           console.error('Error saving audio directory:', error);
           alert('Failed to save audio directory');
         },
@@ -46,16 +64,19 @@ export class SettingsComponent implements OnInit {
 
   startScan(): void {
     this.isScanning = true;
-    this.http
-      .post('/api/scan-library', { path: this.audioDirectoryPath })
+
+    this.preferencesService
+      .scanLibraryWithReset(this.audioDirectoryPath)
       .subscribe({
         next: () => {
           this.isScanning = false;
-          alert('Library scan completed!');
+          this.confirmReset = false;
+          alert('Library reset and scan completed.');
         },
-        error: () => {
+        error: (error) => {
           this.isScanning = false;
-          alert('Scan failed! Check server logs.');
+          console.error('Error:', error);
+          alert('Scan library failed, check logs.');
         },
       });
   }

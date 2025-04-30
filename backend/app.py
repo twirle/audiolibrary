@@ -5,7 +5,7 @@ from flask import Flask, jsonify, request, current_app
 from flask_cors import CORS
 from flask_migrate import Migrate
 from models import Setting, db, Artist, Album, Genre, AlbumArt, Track, GenreAlias, init_db
-from load import scanLibrary
+from load import clearDatabase, scanLibrary
 from config import Config
 from sqlalchemy import func
 
@@ -20,17 +20,22 @@ migrate = Migrate(app, db)
 def getTracks():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 100, type=int)
+    # include_art = request.args.get('include_art', 'true').lower() == 'true'
 
-    # get paginated tracks with relationships
-    tracks = (
-        Track.query
-        .options(
-            db.joinedload(Track.artist),
-            db.joinedload(Track.album).joinedload(Album.albumArt),
-            db.joinedload(Track.genre)
-        )
-        .paginate(page=page, per_page=per_page, error_out=False)
+    # query for tracks
+    query = Track.query.options(
+        db.joinedload(Track.artist),
+        db.joinedload(Track.album),
+        db.joinedload(Track.genre)
     )
+
+    # load art if requested
+    # if include_art:
+    #     query = query.options(
+    #         db.joinedload(Track.album).joinedload(Album.albumArt)
+    #     )
+
+    tracks = query.paginate(page=page, per_page=per_page, error_out=False)
 
     return jsonify({
         'tracks': [{
@@ -47,6 +52,7 @@ def getTracks():
                 'data': t.album.albumArt.data,
                 'mimeType': t.album.albumArt.mimeType
             } if t.album and t.album.albumArt else None
+            # } if include_art and t.album and t.album.albumArt else None
         } for t in tracks.items],
         'pagination': {
             'page': tracks.page,
@@ -83,32 +89,7 @@ def getAlbum(album_id):
         db.joinedload(Album.albumArt)
     ).get_or_404(album_id)
 
-    # tracks = Track.query.filter_by(albumId=album.id).order_by(Track.trackNumber).all()
-
     return jsonify(album.serialize(include_tracks=True, include_artist=True))
-
-
-@app.route('/api/debug/album-art')
-def debugAlbumArt():
-    artCount = AlbumArt.query.count()
-    albumsWithArt = Album.query.filter(Album.albumArtId != None).count()
-    albumsWithoutArt = Album.query.filter(Album.albumArtId == None).count()
-
-    # Sample album data
-    sample_albums = Album.query.limit(5).all()
-    album_data = [{
-        'id': a.id,
-        'name': a.name,
-        'albumArtId': a.albumArtId,
-        'hasArt': a.albumArt is not None
-    } for a in sample_albums]
-
-    return jsonify({
-        'totalAlbumArt': artCount,
-        'albumsWithArt': albumsWithArt,
-        'albumsWithoutArt': albumsWithoutArt,
-        'sampleAlbums': album_data
-    })
 
 
 @app.route('/api/genres')
@@ -181,6 +162,15 @@ def handleScanLibrary():
         'path': path,
         'timestamp': datetime.now().isoformat()
     })
+
+
+@app.route('/api/reset-library', methods=['POST'])
+def resetLibrary():
+    clear = clearDatabase()
+    if clear:
+        return jsonify({'status': 'success', 'message': 'Library reset successfully'})
+    else:
+        return jsonify({'status': 'error', 'message': 'Failed to reset library'}), 500
 
 
 if __name__ == '__main__':
