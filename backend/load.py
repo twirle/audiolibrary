@@ -1,4 +1,5 @@
 import base64
+from datetime import datetime
 import os
 import hashlib
 from pathlib import Path
@@ -183,9 +184,37 @@ def updateSourceGenre(filepath, normalisedGenre):
         print(f"error updating genre in {filepath}: {str(e)}")
 
 
-def scanLibrary(path: str):
-    from app import app
+def scanLibrary(path, cancelEvent=None):
+    from app import app, scanStatus
     from sqlalchemy import select
+
+    # Helper function to update status and return result
+    def updateStatus(status_type, message=None, **stats):
+        result = {
+            'status': status_type,
+            **(stats if stats else {
+                'total': total_files,
+                'success': success_count,
+                'errors': error_count,
+                'removed': deleted_count
+            })
+        }
+
+        if message:
+            result['message'] = message
+
+        # Update global scan status
+        scanStatus["isScanning"] = False
+        scanStatus["lastResult"] = result
+        scanStatus["completedTime"] = datetime.now().isoformat()
+
+        app.logger.info(f"Scan {status_type}: {result}")
+        return result
+
+    # Initialize scan
+    scanStatus["isScanning"] = True
+    scanStatus["startTime"] = datetime.now().isoformat()
+    scanStatus["lastResult"] = None
 
     with app.app_context():
         total_files = 0
@@ -197,11 +226,23 @@ def scanLibrary(path: str):
             # Validate path
             if not any(path.startswith(p) for p in app.config['ALLOWED_PATHS']):
                 app.logger.error(f"Unauthorized scan path: {path}")
-                return {'status': 'error', 'message': 'Path not allowed'}
+                return updateStatus('error', 'Path not allowed')
 
             # Phase 1: Process files
             for root, _, files in os.walk(path):
+                # check for cancellation
+                if cancelEvent and cancelEvent.is_set():
+                    app.logger.info(
+                        "Scan cancelled during directory traversal")
+                    return updateStatus('cancelled', 'Scan cancelled during directory traversal')
+
                 for file in files:
+                    # check for cancellation before processing each file
+                    if cancelEvent and cancelEvent.is_set():
+                        app.logger.info(
+                            "Scan cancelled during file processing")
+                        return updateStatus('cancelled', 'Scan cancelled during file processing')
+
                     if file.lower().endswith(('.flac', '.mp3', '.wav')):
                         total_files += 1
                         filepath = os.path.join(root, file)
@@ -238,6 +279,11 @@ def scanLibrary(path: str):
             # Final commit for processed files
             db.session.commit()
 
+            # check for cancellation before cleanup
+            if cancelEvent and cancelEvent.is_set():
+                app.logger.info("Scan cancelled before cleanup")
+                return updateStatus('cancelled', 'Scan cancelled before cleanup')
+
             # Phase 2: Cleanup deleted files
             stmt = select(Track.id, Track.filepath).execution_options(
                 yield_per=1000)
@@ -262,26 +308,20 @@ def scanLibrary(path: str):
             # Final commit for deletions
             db.session.commit()
 
-            return {
-                'total': total_files,
-                'success': success_count,
-                'errors': error_count,
-                'removed': deleted_count
-            }
+            # Success case
+            return updateStatus('success')
 
         except Exception as e:
             db.session.rollback()
             app.logger.error(f"Scan aborted: {str(e)}")
-            return {
-                'status': 'error',
-                'message': str(e),
-                'partial_results': {
-                    'total': total_files,
-                    'success': success_count,
-                    'errors': error_count,
-                    'removed': deleted_count
-                }
-            }
+
+            # Error case with partial results
+            return updateStatus('error', str(e), partial_results={
+                'total': total_files,
+                'success': success_count,
+                'errors': error_count,
+                'removed': deleted_count
+            })
 
 
 def clearDatabase():

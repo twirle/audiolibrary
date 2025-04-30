@@ -1,5 +1,7 @@
 from datetime import datetime
+import time
 import os
+import threading
 from threading import Thread
 from flask import Flask, jsonify, request, current_app
 from flask_cors import CORS
@@ -8,6 +10,18 @@ from models import Setting, db, Artist, Album, Genre, AlbumArt, Track, GenreAlia
 from load import clearDatabase, scanLibrary
 from config import Config
 from sqlalchemy import func
+
+
+# global variables to track scan state
+activeScanThread = None
+scanCancelEvent = threading.Event()
+scanLock = threading.Lock()
+scanStatus = {
+    "isScanning": False,
+    "lastResult": None,
+    "startTime": None,
+    "completedTime": None
+}
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -143,6 +157,8 @@ def setAudioDirectory():
 
 @app.route('/api/scan-library', methods=['POST'])
 def handleScanLibrary():
+    global activeScanThread, scanCancelEvent, scanLock
+
     requestData = request.get_json()
     path = requestData.get('path')
 
@@ -154,8 +170,24 @@ def handleScanLibrary():
     if not os.path.exists(path):
         return jsonify({'error': 'Invalid directory'}), 400
 
-    # run in background thread, KEEP THE ',' AFTER PATH; args=(path, )
-    Thread(target=scanLibrary, args=(path,), daemon=True).start()
+    # acquire lock for thread management
+    with scanLock:
+        if activeScanThread and activeScanThread.is_alive():
+            app.logger.info("Cancelling previous scan")
+            scanCancelEvent.set()
+            # some time for thread to stop
+            time.sleep(0.5)
+
+        scanCancelEvent.clear()
+
+        # start new scan
+        # run in background thread, KEEP THE ',' AFTER PATH; args=(path, )
+        activeScanThread = Thread(
+            target=scanLibrary,
+            args=(path, scanCancelEvent),
+            daemon=True)
+
+        activeScanThread.start()
 
     return jsonify({
         'status': 'started',
@@ -166,11 +198,28 @@ def handleScanLibrary():
 
 @app.route('/api/reset-library', methods=['POST'])
 def resetLibrary():
+    global activeScanThread, scanCancelEvent
+
+    # cancel any active scan
+    if activeScanThread and activeScanThread.is_alive():
+        app.logger.info("Cancelling scan before database reset")
+        scanCancelEvent.set()
+        # some time for thread to stop
+        time.sleep(0.5)
+
+    # reset the event for future scans
+    scanCancelEvent.clear()
+
     clear = clearDatabase()
     if clear:
         return jsonify({'status': 'success', 'message': 'Library reset successfully'})
     else:
         return jsonify({'status': 'error', 'message': 'Failed to reset library'}), 500
+
+
+@app.route('/api/scan-status')
+def getScanStatus():
+    return jsonify(scanStatus)
 
 
 if __name__ == '__main__':

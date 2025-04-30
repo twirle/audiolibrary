@@ -1,4 +1,9 @@
-import { Component, DestroyRef, OnInit } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  DestroyRef,
+  OnInit,
+} from '@angular/core';
 import { ArtistService } from '../services/artist.service';
 import { NavigationService } from '../services/navigation.service';
 import { AlbumSummary, Artist } from '../models/artist.model';
@@ -6,6 +11,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { EventBusService } from '../services/event-bus.service';
 
 @Component({
   selector: 'app-artist',
@@ -17,13 +23,16 @@ export class ArtistComponent implements OnInit {
   artists: Artist[] = [];
   selectedArtist: Artist | null = null;
   searchQuery = '';
+  JSON = JSON;
 
   constructor(
     private artistService: ArtistService,
     private destroyRef: DestroyRef,
     private navigation: NavigationService,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef,
+    private eventBus: EventBusService
   ) {}
 
   ngOnInit(): void {
@@ -34,8 +43,25 @@ export class ArtistComponent implements OnInit {
         next: (artists) => {
           this.artists = artists;
           this.checkForArtistInRoute();
+          this.cdr.detectChanges();
         },
         error: (err) => console.error('Error with artists subscription:', err),
+      });
+
+    // subscribe to library_updated event
+    this.eventBus
+      .on('LIBRARY_UPDATED')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        console.log('Library updated event receive in component');
+
+        for (let i = 1; i <= 3; i++) {
+          setTimeout(() => {
+            console.log(`Force refresh attempt ${i}`);
+            this.artistService.loadArtists();
+            this.cdr.detectChanges();
+          }, i * 500);
+        }
       });
   }
 

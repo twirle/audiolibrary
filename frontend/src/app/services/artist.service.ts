@@ -34,7 +34,7 @@ export class ArtistService {
     });
   }
 
-  private loadArtists(): void {
+  loadArtists(): void {
     console.log('Loading artists...');
     this.http
       .get<Artist[]>(`${this.apiBaseUrl}/artists`)

@@ -1,6 +1,15 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map, switchMap, tap } from 'rxjs';
+import {
+  Observable,
+  filter,
+  map,
+  switchMap,
+  take,
+  takeWhile,
+  tap,
+  timer,
+} from 'rxjs';
 import { EventBusService } from './event-bus.service';
 
 @Injectable({
@@ -25,9 +34,33 @@ export class PreferencesService {
 
   scanLibrary(path: string): Observable<any> {
     return this.http.post('/api/scan-library', { path }).pipe(
-      tap(() => {
-        this.eventBus.emit('LIBRARY_UPDATED', { path });
+      switchMap((initialResponse) => {
+        // polling for scan completion
+        return this.pollScanCompletion().pipe(
+          // when complete, return the final result
+          tap((finalResult) => {
+            console.log('Scan completed with result:', finalResult);
+            // emit event after scan actually completes
+            this.eventBus.emit('LIBRARY_UPDATED', {
+              path,
+              result: finalResult,
+            });
+          })
+        );
       })
+    );
+  }
+
+  private pollScanCompletion(): Observable<any> {
+    return timer(0, 2000).pipe(
+      switchMap(() => this.http.get('/api/scan-status')),
+      map((status) => status as any),
+      // continue polling until isScanning becomes false
+      takeWhile((status) => status.isScanning, true),
+      // only return the final result
+      filter((status) => !status.isScanning),
+      take(1),
+      map((status) => status.lastResult)
     );
   }
 
