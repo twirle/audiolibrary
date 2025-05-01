@@ -71,7 +71,7 @@ export class SettingsComponent implements OnInit {
         next: () => {
           this.isScanning = false;
           this.confirmReset = false;
-          alert('Library reset and scan completed.');
+          alert('Library reset and scan started');
         },
         error: (error) => {
           this.isScanning = false;

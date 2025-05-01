@@ -11,12 +11,17 @@ import {
   timer,
 } from 'rxjs';
 import { EventBusService } from './event-bus.service';
+import { NotificationService } from './notification.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class PreferencesService {
-  constructor(private http: HttpClient, private eventBus: EventBusService) {}
+  constructor(
+    private http: HttpClient,
+    private eventBus: EventBusService,
+    private notificationService: NotificationService
+  ) {}
 
   getAudioDirectory(): Observable<string> {
     return this.http
@@ -33,14 +38,50 @@ export class PreferencesService {
   }
 
   scanLibrary(path: string): Observable<any> {
+    // show notification
+    const notificationId = this.notificationService.show(
+      'Scanning library...',
+      'info',
+      false
+    );
+
     return this.http.post('/api/scan-library', { path }).pipe(
       switchMap((initialResponse) => {
         // polling for scan completion
         return this.pollScanCompletion().pipe(
           // when complete, return the final result
           tap((finalResult) => {
-            console.log('Scan completed with result:', finalResult);
-            // emit event after scan actually completes
+            // Dismiss the "in progress" notification
+            this.notificationService.dismiss(notificationId);
+
+            // show success notification
+            if (finalResult.status === 'success') {
+              this.notificationService.show(
+                `Scan completed: ${finalResult.success} files processed, ${finalResult.errors} errors`,
+                'success'
+              );
+            }
+            // show error notification
+            else if (finalResult.status === 'error') {
+              this.notificationService.show(
+                `Scan failed: ${finalResult.message}`,
+                'error'
+              );
+            }
+            // show cancelled notification
+            else if (finalResult.status === 'cancelled') {
+              this.notificationService.show('Scan cancelled', 'warning');
+            }
+
+            // show unknown error notification
+            else {
+              this.notificationService.show(
+                `Scan failed: ${finalResult.message}`,
+                'error'
+              );
+            }
+
+            // emit event with the final result
             this.eventBus.emit('LIBRARY_UPDATED', {
               path,
               result: finalResult,
