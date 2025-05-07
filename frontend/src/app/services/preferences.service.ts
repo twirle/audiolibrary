@@ -55,7 +55,17 @@ export class PreferencesService {
             this.notificationService.dismiss(notificationId);
 
             // show success notification
-            if (finalResult.status === 'success') {
+            if (!finalResult) {
+              this.notificationService.show(
+                'Scan completed with unknown status',
+                'warning'
+              );
+              this.eventBus.emit('LIBRARY_UPDATED', { path });
+              return;
+            }
+
+            //  show success notification
+            else if (finalResult.status === 'success') {
               this.notificationService.show(
                 `Scan completed: ${finalResult.success} files processed, ${finalResult.errors} errors`,
                 'success'

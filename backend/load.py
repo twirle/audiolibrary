@@ -56,132 +56,160 @@ def normaliseGenre(genre):
     return genre.title()
 
 
+def extractMetadata(audio, filepath):
+    # extract basic metadata
+    title = (audio.get('title', [''])[0]
+             or '').strip() or os.path.basename(filepath)
+    artistName = (audio.get('artist', [''])[
+                  0] or '').strip() or 'Unknown Artist'
+    albumName = (audio.get('album', [''])[0] or '').strip() or 'Unknown Album'
+
+    # extract genre metadata safely
+    rawGenre = audio.get('genre')
+    genreName = None
+    if rawGenre:
+        if isinstance(rawGenre, list) and len(rawGenre) > 0:
+            genreName = str(rawGenre[0]).strip() or None
+        elif isinstance(rawGenre, str):
+            genreName = rawGenre.strip() or None
+        else:
+            genreName = str(rawGenre).strip() or None
+
+    # parse year
+    year = None
+    rawDate = audio.get('date')
+    if rawDate:
+        try:
+            dateStr = rawDate[0] if isinstance(rawDate, list) else str(rawDate)
+            year = int(dateStr[:4]) if dateStr.strip() else None
+        except (ValueError, IndexError):
+            pass
+
+    # extract track number
+    trackNumber = 0
+    trackNumberRaw = audio.get('tracknumber', ['0'])[0]
+    try:
+        trackNumber = int(trackNumberRaw.split('/')[0])
+    except (ValueError, AttributeError):
+        pass
+
+    return {
+        'title': title,
+        'artistName': artistName,
+        'albumName': albumName,
+        'genreName': genreName,
+        'year': year,
+        'trackNumber': trackNumber
+    }
+
+
+def getOrCreateArtist(artistName):
+    artist = db.session.query(Artist).filter_by(name=artistName).first()
+    if not artist:
+        artist = Artist(name=artistName)
+        db.session.add(artist)
+        db.session.flush()
+    return artist
+
+
+def getOrCreateGenre(genreName):
+    if not genreName:
+        return None
+
+    normalisedGenre = normaliseGenre(genreName)
+    if not normalisedGenre:
+        return None
+
+    genre = db.session.query(Genre).filter_by(name=normalisedGenre).first()
+    if not genre:
+        genre = Genre(name=normalisedGenre)
+        db.session.add(genre)
+        db.session.flush()
+    return genre
+
+
+def processAlbumArt(audio, albumName):
+    if not hasattr(audio, 'pictures'):
+        return None
+
+    for picture in audio.pictures:
+        if picture.type == 3:  # front cover
+            current_app.logger.info(f"Found cover art for {albumName}")
+            imageData = base64.b64encode(picture.data).decode('utf-8')
+            imageHash = hashlib.sha256(picture.data).hexdigest()
+
+            albumArt = db.session.query(
+                AlbumArt).filter_by(hash=imageHash).first()
+            if not albumArt:
+                albumArt = AlbumArt(
+                    hash=imageHash,
+                    mimeType=picture.mime,
+                    data=imageData
+                )
+                db.session.add(albumArt)
+                db.session.flush()
+                current_app.logger.info(
+                    f"Created new AlbumArt with ID: {albumArt.id}")
+            return albumArt
+    return None
+
+
+def getOrCreateAlbum(albumName, artistId, year, albumArt):
+    album = db.session.query(Album).filter_by(
+        name=albumName, artistId=artistId).first()
+    if not album:
+        album = Album(
+            name=albumName,
+            artistId=artistId,
+            year=year,
+            albumArtId=albumArt.id if albumArt else None
+        )
+        db.session.add(album)
+        db.session.flush()
+    return album
+
+
+def createTrack(metadata, artistId, albumId, genreId, filepath, audioInfo):
+    track = Track(
+        title=metadata['title'],
+        artistId=artistId,
+        albumId=albumId,
+        genreId=genreId,
+        duration=float(audioInfo.length) if audioInfo else None,
+        bitrate=int(audioInfo.bitrate) if audioInfo and hasattr(
+            audioInfo, 'bitrate') else None,
+        trackNumber=metadata['trackNumber'],
+        year=metadata['year'],
+        filepath=filepath
+    )
+    return track
+
+
 def processFile(filepath):
     try:
         audio = File(filepath)
         if not audio:
             return None
 
-        # extract basic metadata
-        title = (audio.get('title', [''])[0] or '').strip(
-        ) or os.path.basename(filepath)
-        artistName = (audio.get('artist', [''])[
-                      0] or '').strip() or 'Unknown Artist'
-        albumName = (audio.get('album', [''])[
-                     0] or '').strip() or 'Unknown Album'
-        genreName = (audio.get('genre', [''])[0] or '').strip() or None
+        # extract all metadata
+        metadata = extractMetadata(audio, filepath)
 
-        # get or create artist
-        artist = db.session.query(Artist).filter_by(name=artistName).first()
-        if not artist:
-            artist = Artist(name=artistName)
-            db.session.add(artist)
-            db.session.flush()
+        # process each component
+        artist = getOrCreateArtist(metadata['artistName'])
+        genre = getOrCreateGenre(metadata['genreName'])
+        albumArt = processAlbumArt(audio, metadata['albumName'])
+        album = getOrCreateAlbum(
+            metadata['albumName'], artist.id, metadata['year'], albumArt)
 
-        # get or create genre
-        normalisedGenre = normaliseGenre(genreName)
-        genre = db.session.query(Genre).filter_by(name=normalisedGenre).first()
-        if not genre and normalisedGenre:
-            genre = Genre(name=normalisedGenre)
-            db.session.add(genre)
-            db.session.flush
-
-        # parse year
-        year = None
-        rawDate = audio.get('date')
-        if rawDate:
-            try:
-                dateStr = rawDate[0] if isinstance(
-                    rawDate, list) else str(rawDate)
-                year = int(dateStr[:4]) if dateStr.strip() else None
-            except (ValueError, IndexError):
-                pass
-
-        # process album art
-        albumArt = None
-        if hasattr(audio, 'pictures'):
-            for picture in audio.pictures:
-                if picture.type == 3:  # Front cover
-                    print(f"Found cover art for {albumName}")
-
-                    imageData = base64.b64encode(picture.data).decode('utf-8')
-                    imageHash = hashlib.sha256(picture.data).hexdigest()
-
-                    albumArt = db.session.query(AlbumArt).filter_by(
-                        hash=imageHash).first()
-                    if not albumArt:
-                        albumArt = AlbumArt(
-                            hash=imageHash,
-                            mimeType=picture.mime,
-                            data=imageData
-                        )
-                        db.session.add(albumArt)
-                        db.session.flush()
-                    print(f"Created new AlbumArt with ID: {albumArt.id}")
-                break
-
-        # get or create album
-        album = db.session.query(Album).filter_by(
-            name=albumName, artistId=artist.id).first()
-        if not album:
-            album = Album(
-                name=albumName,
-                artistId=artist.id,
-                year=year,
-                albumArtId=albumArt.id if albumArt else None
-            )
-            db.session.add(album)
-            db.session.flush()
-
-        # create track
-        trackNumber = None
-        trackNumberRaw = audio.get('tracknumber', ['0'])[0]
-        try:
-            trackNumber = int(trackNumberRaw.split('/')[0])
-        except (ValueError, AttributeError):
-            trackNumber = 0
-
-        track = Track(
-            title=title,
-            artistId=artist.id,
-            albumId=album.id,
-            genreId=genre.id if genre else None,
-            duration=float(audio.info.length) if audio.info else None,
-            bitrate=int(audio.info.bitrate) if audio.info and hasattr(
-                audio.info, 'bitrate') else None,
-            trackNumber=trackNumber,
-            year=year,
-            filepath=filepath
-        )
+        # create the track
+        track = createTrack(metadata, artist.id, album.id,
+                            genre.id if genre else None, filepath, audio.info)
 
         return track
     except Exception as e:
         db.session.rollback()
-        print(f"Error processing {filepath}: {str(e)}")
+        current_app.logger.error(f"Error processing {filepath}: {str(e)}")
         return None
-
-
-def addGenreAlias(alias, canonical):
-    genre = Genre.query.filter_by(name=canonical).first()
-    if not genre:
-        return
-    existingAlias = GenreAlias.query.filter_by(alias=alias.lower()).first()
-
-    if not existingAlias:
-        aliasEntry = GenreAlias(alias=alias.lower(), genreId=genre.id)
-        db.session.add(aliasEntry)
-
-
-def updateSourceGenre(filepath, normalisedGenre):
-    try:
-        audio = File(filepath, easy=True)
-        currentGenre = audio.get('genre', [''])[0]
-        if currentGenre != normalisedGenre:
-            audio['genre'] = normalisedGenre
-            audio.save()
-
-    except Exception as e:
-        print(f"error updating genre in {filepath}: {str(e)}")
 
 
 def scanLibrary(path, cancelEvent=None):
