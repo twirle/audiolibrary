@@ -162,38 +162,52 @@ def handleScanLibrary():
     requestData = request.get_json()
     path = requestData.get('path')
 
-    # path from settings
-    if not path:
-        path = Setting.get('music_folder', current_app.config['MUSIC_FOLDER'])
-
-    # check path exist
-    if not os.path.exists(path):
+    # Validate path
+    if not path or not os.path.exists(path):
         return jsonify({'error': 'Invalid directory'}), 400
 
-    # acquire lock for thread management
+    # Reset scan status
+    scanStatus["isScanning"] = True
+    scanStatus["startTime"] = datetime.now().isoformat()
+    scanStatus["lastResult"] = None
+    scanStatus["completedTime"] = None
+
+    # Cancel any ongoing scan
     with scanLock:
         if activeScanThread and activeScanThread.is_alive():
-            app.logger.info("Cancelling previous scan")
             scanCancelEvent.set()
-            # some time for thread to stop
             time.sleep(0.5)
 
         scanCancelEvent.clear()
 
-        # start new scan
-        # run in background thread, KEEP THE ',' AFTER PATH; args=(path, )
-        activeScanThread = Thread(
-            target=scanLibrary,
-            args=(path, scanCancelEvent),
-            daemon=True)
+        # Start a new scan in a background thread
+        def run_with_app_context(path, cancelEvent):
+            with app.app_context():
+                scanLibrary(path, cancelEvent, scanStatus)
 
+        activeScanThread = Thread(
+            target=run_with_app_context,
+            args=(path, scanCancelEvent),
+            daemon=True
+        )
         activeScanThread.start()
 
-    return jsonify({
-        'status': 'started',
-        'path': path,
-        'timestamp': datetime.now().isoformat()
-    })
+    return jsonify({'status': 'started', 'path': path})
+
+
+@app.route('/api/cancel-scan', methods=['POST'])
+def cancelScan():
+    global scanCancelEvent, scanStatus
+
+    app.logger.info("Manual scan cancellation requested")
+    scanCancelEvent.set()  # Make sure this is the same event passed to your scan thread
+
+    # You might need to add this to ensure the status is updated immediately
+    scanStatus["isScanning"] = False
+    scanStatus["lastResult"] = {
+        'status': 'cancelled', 'message': 'User cancelled scan'}
+
+    return jsonify({'status': 'cancellation_requested'})
 
 
 @app.route('/api/reset-library', methods=['POST'])

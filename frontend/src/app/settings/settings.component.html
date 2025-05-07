@@ -79,13 +79,28 @@
     </div>
 
     <!-- Scan button -->
-    <div class="flex items-center">
+    <div class="flex gap-2">
       <button
         (click)="startScan()"
-        class="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:bg-gray-500 disabled:cursor-not-allowed"
-        [disabled]="!confirmReset"
+        class="flex-1 px-4 py-2 rounded text-white"
+        [disabled]="!confirmReset || isScanning"
+        [ngClass]="{
+          'bg-green-600 hover:bg-green-700': !isScanning && !scanComplete,
+          'bg-gray-500': isScanning,
+          'bg-blue-500': scanComplete
+        }"
       >
-        {{ isScanning ? "Scanning..." : "Scan Library" }}
+        <span *ngIf="!isScanning && !scanComplete">Scan Library</span>
+        <span *ngIf="isScanning">Scanning...</span>
+        <span *ngIf="!isScanning && scanComplete">Complete!</span>
+      </button>
+
+      <button
+        *ngIf="isScanning"
+        (click)="cancelScan()"
+        class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+      >
+        Cancel
       </button>
     </div>
   </div>

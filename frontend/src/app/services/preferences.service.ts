@@ -2,8 +2,10 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import {
   Observable,
+  catchError,
   filter,
   map,
+  of,
   switchMap,
   take,
   takeWhile,
@@ -12,6 +14,21 @@ import {
 } from 'rxjs';
 import { EventBusService } from './event-bus.service';
 import { NotificationService } from './notification.service';
+
+interface ScanStatus {
+  isScanning: boolean;
+  lastResult: ScanResult | null;
+  startTime?: string;
+  completedTime?: string;
+}
+
+interface ScanResult {
+  status: 'success' | 'error' | 'cancelled';
+  success?: number;
+  errors?: number;
+  total?: number;
+  message?: string;
+}
 
 @Injectable({
   providedIn: 'root',
@@ -104,13 +121,22 @@ export class PreferencesService {
 
   private pollScanCompletion(): Observable<any> {
     return timer(0, 2000).pipe(
-      switchMap(() => this.http.get('/api/scan-status')),
-      map((status) => status as any),
-      // continue polling until isScanning becomes false
-      takeWhile((status) => status.isScanning, true),
-      // only return the final result
-      filter((status) => !status.isScanning),
+      // Get scan status every 2 seconds
+      switchMap(() => this.http.get<any>('/api/scan-status')),
+
+      // Continue polling while scan is in progress or no result yet
+      takeWhile(
+        (status) => status.isScanning === true || status.lastResult === null,
+        true
+      ),
+
+      // Only emit when scan is complete with a result
+      filter((status) => !status.isScanning && status.lastResult !== null),
+
+      // Take only the first matching result and complete
       take(1),
+
+      // Return just the result object
       map((status) => status.lastResult)
     );
   }

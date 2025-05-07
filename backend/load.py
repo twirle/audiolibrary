@@ -2,10 +2,8 @@ import base64
 from datetime import datetime
 import os
 import hashlib
-from pathlib import Path
 from flask import current_app
 from mutagen import File
-from sqlalchemy import inspect, text
 from thefuzz import fuzz
 from config import Config
 from models import db, Artist, Album, Genre, AlbumArt, Track, Genre, GenreAlias
@@ -20,40 +18,29 @@ genreNormalisation = {
 }
 
 
-def normaliseGenre(genre):
-    if not genre:
+def normaliseGenre(rawGenre):
+    # normalize a genre using exact matches or fuzzy matching.
+    if not rawGenre:
         return None
 
-    genre = genre.strip()
-    lowerName = genre.lower()
+    # Exact match
+    if rawGenre.lower() in genreNormalisation:
+        return genreNormalisation[rawGenre.lower()]
 
-    # check direct matches
-    if lowerName in genreNormalisation:
-        return genreNormalisation[lowerName]
+    # Fuzzy match
+    best_match = None
+    highest_score = 0
+    for key in genreNormalisation.keys():
+        score = fuzz.ratio(rawGenre.lower(), key)
+        if score > highest_score and score >= 80:  # Threshold for fuzzy matching
+            highest_score = score
+            best_match = key
 
-    # check aliases from database
-    alias = GenreAlias.query.filter_by(alias=lowerName).first()
-    if alias:
-        return alias.genre.name
+    if best_match:
+        return genreNormalisation[best_match]
 
-    # fuzz match against existing genres
-    allGenres = Genre.query.all()
-    bestMatch = None
-    bestScore = 0
-
-    for genre in allGenres:
-        score = fuzz.ratio(lowerName, genre.name.lower())
-        if score > 85 and score > bestScore:
-            bestScore = score
-            bestMatch = genre.name
-
-    if bestMatch:
-        # add as new alias
-        addGenreAlias(lowerName, bestMatch)
-        return bestMatch
-
-    # fallback to title as base
-    return genre.title()
+    # if no match is found, return the raw genre
+    return rawGenre
 
 
 def extractMetadata(audio, filepath):
@@ -116,10 +103,12 @@ def getOrCreateGenre(genreName):
     if not genreName:
         return None
 
+    # normalize the genre
     normalisedGenre = normaliseGenre(genreName)
     if not normalisedGenre:
         return None
 
+    # query or create the genre
     genre = db.session.query(Genre).filter_by(name=normalisedGenre).first()
     if not genre:
         genre = Genre(name=normalisedGenre)
@@ -212,144 +201,133 @@ def processFile(filepath):
         return None
 
 
-def scanLibrary(path, cancelEvent=None):
-    from app import app, scanStatus
-    from sqlalchemy import select
+def updateScanStatus(scanStatus, app, status_type, message=None, **stats):
+    result = {
+        'status': status_type,
+        **(stats if stats else {
+            'total': stats.get('total_files', 0),
+            'success': stats.get('success_count', 0),
+            'errors': stats.get('error_count', 0),
+            'removed': stats.get('deleted_count', 0)
+        })
+    }
 
-    # Helper function to update status and return result
-    def updateStatus(status_type, message=None, **stats):
-        result = {
-            'status': status_type,
-            **(stats if stats else {
-                'total': total_files,
-                'success': success_count,
-                'errors': error_count,
-                'removed': deleted_count
-            })
-        }
+    if message:
+        result['message'] = message
 
-        if message:
-            result['message'] = message
+    # Update global scan status
+    scanStatus["isScanning"] = False
+    scanStatus["lastResult"] = result
+    scanStatus["completedTime"] = datetime.now().isoformat()
 
-        # Update global scan status
-        scanStatus["isScanning"] = False
-        scanStatus["lastResult"] = result
-        scanStatus["completedTime"] = datetime.now().isoformat()
+    app.logger.info(f"Scan {status_type}: {result}")
+    return result
 
-        app.logger.info(f"Scan {status_type}: {result}")
-        return result
+
+def processFilesInDirectory(path, cancelEvent, db, app, counters):
+    """Process all audio files in directory and subdirectories."""
+    for root, _, files in os.walk(path):
+        # check for cancellation
+        if cancelEvent and cancelEvent.is_set():
+            app.logger.info("Scan cancelled during directory traversal")
+            return False, "Scan cancelled during directory traversal"
+
+        for file in files:
+            # check for cancellation before processing each file
+            if cancelEvent and cancelEvent.is_set():
+                app.logger.info("Scan cancelled during file processing")
+                return False, "Scan cancelled during file processing"
+
+            if file.lower().endswith(('.flac', '.mp3', '.wav')):
+                counters['total_files'] += 1
+                filepath = os.path.join(root, file)
+
+                try:
+                    # check existing track
+                    exists = db.session.query(Track.id).filter_by(
+                        filepath=filepath).scalar()
+                    if exists:
+                        continue
+
+                    with db.session.begin_nested():
+                        track = processFile(filepath)
+                        if track:
+                            db.session.add(track)
+                            counters['success_count'] += 1
+
+                            # if track.genre:
+                            #     updateSourceGenre(filepath, track.genre.name)
+
+                    # batch processing
+                    if counters['total_files'] % 100 == 0:
+                        db.session.flush()
+
+                except Exception as e:
+                    db.session.rollback()
+                    counters['error_count'] += 1
+                    app.logger.error(f"Error processing {filepath}: {str(e)}")
+
+    # Final commit for processed files
+    db.session.commit()
+    return True, None
+
+
+def scanLibrary(path, cancelEvent=None, scanStatus=None):
+    from app import app
 
     # Initialize scan
     scanStatus["isScanning"] = True
     scanStatus["startTime"] = datetime.now().isoformat()
     scanStatus["lastResult"] = None
 
-    with app.app_context():
-        total_files = 0
-        success_count = 0
-        error_count = 0
-        deleted_count = 0
+    # Counters dictionary
+    counters = {
+        'total_files': 0,
+        'success_count': 0,
+        'error_count': 0,
+        'deleted_count': 0
+    }
 
-        try:
+    try:
+        with app.app_context():
             # Validate path
             if not any(path.startswith(p) for p in app.config['ALLOWED_PATHS']):
                 app.logger.error(f"Unauthorized scan path: {path}")
-                return updateStatus('error', 'Path not allowed')
+                return updateScanStatus(scanStatus, app, 'error', 'Path not allowed')
 
             # Phase 1: Process files
-            for root, _, files in os.walk(path):
-                # check for cancellation
-                if cancelEvent and cancelEvent.is_set():
-                    app.logger.info(
-                        "Scan cancelled during directory traversal")
-                    return updateStatus('cancelled', 'Scan cancelled during directory traversal')
+            success, cancel_message = processFilesInDirectory(
+                path, cancelEvent, db, app, counters)
+            if not success:
+                return updateScanStatus(scanStatus, app, 'cancelled', cancel_message, **counters)
 
-                for file in files:
-                    # check for cancellation before processing each file
-                    if cancelEvent and cancelEvent.is_set():
-                        app.logger.info(
-                            "Scan cancelled during file processing")
-                        return updateStatus('cancelled', 'Scan cancelled during file processing')
-
-                    if file.lower().endswith(('.flac', '.mp3', '.wav')):
-                        total_files += 1
-                        filepath = os.path.join(root, file)
-
-                        try:
-                            # Check existing track using exists()
-                            exists = db.session.query(
-                                Track.id
-                            ).filter_by(filepath=filepath).scalar()
-
-                            if exists:
-                                continue
-
-                            with db.session.begin_nested():
-                                track = processFile(filepath)
-                                if track:
-                                    db.session.add(track)
-                                    success_count += 1
-
-                                    if track.genre:
-                                        updateSourceGenre(
-                                            filepath, track.genre.name)
-
-                            # Batch processing
-                            if total_files % 100 == 0:
-                                db.session.flush()
-
-                        except Exception as e:
-                            db.session.rollback()
-                            error_count += 1
-                            app.logger.error(
-                                f"Error processing {filepath}: {str(e)}")
-
-            # Final commit for processed files
-            db.session.commit()
-
-            # check for cancellation before cleanup
+            # Check for cancellation before cleanup
             if cancelEvent and cancelEvent.is_set():
                 app.logger.info("Scan cancelled before cleanup")
-                return updateStatus('cancelled', 'Scan cancelled before cleanup')
-
-            # Phase 2: Cleanup deleted files
-            stmt = select(Track.id, Track.filepath).execution_options(
-                yield_per=1000)
-            deleted_count = 0
-
-            for row in db.session.execute(stmt):
-                try:
-                    # Check if file exists AND starts with the current scan path
-                    if not Path(row.filepath).exists() or not row.filepath.startswith(path):
-                        track = db.session.get(Track, row.id)
-                        if track:
-                            db.session.delete(track)
-                            deleted_count += 1
-
-                            if deleted_count % 100 == 0:
-                                db.session.commit()
-                except Exception as e:
-                    db.session.rollback()
-                    app.logger.error(
-                        f"Error deleting track {row.id}: {str(e)}")
-
-            # Final commit for deletions
-            db.session.commit()
+                return updateScanStatus(scanStatus, app, 'cancelled', 'Scan cancelled before cleanup', **counters)
 
             # Success case
-            return updateStatus('success')
+            return updateScanStatus(scanStatus, app, 'success', **counters)
 
-        except Exception as e:
-            db.session.rollback()
-            app.logger.error(f"Scan aborted: {str(e)}")
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Scan aborted: {str(e)}")
 
-            # Error case with partial results
-            return updateStatus('error', str(e), partial_results={
-                'total': total_files,
-                'success': success_count,
-                'errors': error_count,
-                'removed': deleted_count
-            })
+        # error case with partial results
+        return updateScanStatus(scanStatus, app, 'error', str(e), partial_results=counters)
+
+    finally:
+        # ensure scanStatus is updated if function exits unexpectedly
+        if scanStatus["isScanning"]:
+            app.logger.warning(
+                "Scan ended without properly updating status, forcing status update")
+            scanStatus["isScanning"] = False
+            if not scanStatus["lastResult"]:
+                scanStatus["lastResult"] = {
+                    'status': 'error',
+                    'message': 'Scan terminated abnormally'
+                }
+            scanStatus["completedTime"] = datetime.now().isoformat()
 
 
 def clearDatabase():

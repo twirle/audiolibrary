@@ -9,6 +9,7 @@ import { NotificationsComponent } from './notifications/notifications.component'
   imports: [RouterOutlet, SidebarComponent, NotificationsComponent],
   template: `
     <div class="flex min-h-screen">
+      <app-notifications></app-notifications>
       <app-sidebar></app-sidebar>
       <main class="flex-1 ml-48">
         <router-outlet></router-outlet>

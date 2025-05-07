@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { OnInit, Component } from '@angular/core';
+import { OnInit, Component, ChangeDetectorRef } from '@angular/core';
 import { PreferencesService } from '../services/preferences.service';
 import { error } from 'jquery';
 
@@ -17,13 +17,15 @@ declare const $: any;
 export class SettingsComponent implements OnInit {
   audioDirectoryPath: string = '';
   isScanning: boolean = false;
+  scanComplete: boolean = false;
   confirmReset: boolean = false;
   isSaving: boolean = false;
   hasSaved: boolean = false;
 
   constructor(
     private http: HttpClient,
-    private preferencesService: PreferencesService
+    private preferencesService: PreferencesService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -64,6 +66,7 @@ export class SettingsComponent implements OnInit {
 
   startScan(): void {
     this.isScanning = true;
+    this.scanComplete = false;
 
     this.preferencesService
       .scanLibraryWithReset(this.audioDirectoryPath)
@@ -71,7 +74,8 @@ export class SettingsComponent implements OnInit {
         next: () => {
           this.isScanning = false;
           this.confirmReset = false;
-          alert('Library reset and scan started');
+          this.scanComplete = true;
+          this.cdr.detectChanges(); // Force UI update
         },
         error: (error) => {
           this.isScanning = false;
@@ -79,5 +83,20 @@ export class SettingsComponent implements OnInit {
           alert('Scan library failed, check logs.');
         },
       });
+  }
+
+  cancelScan(): void {
+    this.isScanning = false;
+    this.confirmReset = false;
+
+    this.http.post('/api/cancel-scan', {}).subscribe({
+      next: () => {
+        console.log('Cancel request sent');
+      },
+      error: (error) => {
+        console.error('Error cancelling scan:', error);
+        alert('Failed to cancel scan');
+      },
+    });
   }
 }
