@@ -183,7 +183,7 @@ def handleScanLibrary():
         # Start a new scan in a background thread
         def run_with_app_context(path, cancelEvent):
             with app.app_context():
-                scanLibrary(path, cancelEvent, scanStatus)
+                scanLibrary(path, cancelEvent, scanStatus, app=app)
 
         activeScanThread = Thread(
             target=run_with_app_context,

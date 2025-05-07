@@ -272,8 +272,8 @@ def processFilesInDirectory(path, cancelEvent, db, app, counters):
     return True, None
 
 
-def scanLibrary(path, cancelEvent=None, scanStatus=None):
-    from app import app
+def scanLibrary(path, cancelEvent=None, scanStatus=None, app=None):
+    # from app import app
 
     # Initialize scan
     scanStatus["isScanning"] = True
